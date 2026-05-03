@@ -167,8 +167,8 @@ latex2mathml==3.78.0
 latex2sympy2_extended==1.0.6
 lazy_loader==0.4
 Levenshtein==0.27.1
-libarchive-c
-libmambapy
+# libarchive-c
+# libmambapy
 librosa==0.11.0
 lighteval @ git+https://github.com/huggingface/lighteval.git@d50bc3072b8814656633400a1850c500c6aa2e39
 litellm==1.61.3
