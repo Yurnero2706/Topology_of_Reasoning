@@ -119,9 +119,6 @@ graphene==3.4.3
 graphql-core==3.2.6
 graphql-relay==3.2.0
 greenlet==3.2.3
-grpc-google-iam-v1==0.14.2
-grpcio==1.71.0
-grpcio-status==1.71.0
 h11==0.14.0
 hf_transfer==0.1.9
 hjson==3.1.0
