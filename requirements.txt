@@ -115,7 +115,6 @@ google-generativeai==0.8.5
 google-pasta==0.2.0
 google-resumable-media==2.7.2
 googleapis-common-protos==1.70.0
-==4.44.0
 _client==1.3.0
 graphene==3.4.3
 graphql-core==3.2.6
