@@ -19,7 +19,7 @@ astunparse==1.6.3
 async-timeout==5.0.1
 attrs==25.3.0
 audioread==3.0.1
-av==14.4.0
+#av==14.4.0
 backcall==0.2.0
 backoff==2.2.1
 beautifulsoup4
