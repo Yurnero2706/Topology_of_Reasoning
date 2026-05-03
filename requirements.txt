@@ -189,9 +189,6 @@ mbstrdecoder==1.1.4
 mdurl==0.1.2
 mistral_common==1.5.4
 mistralai==1.8.1
-mkl-fft
-mkl-random
-mkl-service==2.4.0
 mock==4.0.3
 modelscope==1.25.0
 monotonic==1.6
