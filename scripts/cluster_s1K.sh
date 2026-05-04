@@ -1,4 +1,4 @@
-MODEL_NAME="Qwen/Qwen2.5-3B-Instruct"
+MODEL_NAME="Qwen/Qwen2.5-3B"
 BLOCK_SIZE=32768 # Important: Set block size to 32768 to capture long-range dependencies in reasoning tasks [1]
 LR=1e-5
 EPOCHS=5
@@ -19,7 +19,7 @@ for DS in "${DATASETS[@]}"; do
   echo ">>> Bắt đầu huấn luyện SFT với $DS..."
   
   # Run torchrun for distributed training (adjust --nproc_per_node based on your GPU setup)
-  torchrun --nproc_per_node=2 train/sft.py \
+  torchrun --nproc_per_node=2 src/sft.py \
       --model_name_or_path=$MODEL_NAME \
       --dataset_name=$DS \
       --num_train_epochs=$EPOCHS \
