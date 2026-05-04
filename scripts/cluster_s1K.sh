@@ -10,7 +10,8 @@ max_steps=-1
 gpu_count=$(nvidia-smi -L | wc -l)
 push_to_hub=false
 
-python src/cluster_steps_generated.py \
+torchrun --nproc-per-node ${gpu_count} --master_port 12345 \
+    src/cluster_steps_generated.py \
     --block_size=10000 \
     --per_device_train_batch_size=${micro_batch_size} \
     --per_device_eval_batch_size=${micro_batch_size} \
