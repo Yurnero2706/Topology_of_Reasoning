@@ -2,7 +2,7 @@
 
 ## simplescaling/s1K
 export HF_TOKEN=your_token
-DATASET="simplescaling/s1K" #gsm8k, math_500, aime
+DATASET="gsm8k" #gsm8k, math_500, aime
 CSV_PATH="${CSV_PATH:-$DATASET}"
 MODEL="Qwen/Qwen2.5-3B"  #deepseek-ai/DeepSeek-R1-Distill-Qwen-32B, Qwen/Qwen2.5-32B
 NUM_TYPES=200
