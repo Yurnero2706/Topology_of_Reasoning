@@ -51,8 +51,8 @@ for step in "${STEPS[@]}"; do
       
       # cluster_steps_generated.py thực hiện K-means (K=200) và tính diameter [6, 7]
       python src/cluster_steps_generated.py \
-          --model_path "$MODEL_PATH" \
-          --dataset "AIME2024" \
+          --model_name_or_path "$MODEL_PATH" \
+          --dataset "simplescaling/s1K" \
           --target_layer_ratio "$layer" \
           --k_clusters 200 \
           --output_dir "extract_steps/$suffix/step$step/ratio$layer"
