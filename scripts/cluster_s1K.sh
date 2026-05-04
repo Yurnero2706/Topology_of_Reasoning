@@ -20,8 +20,8 @@ for DS in "${DATASETS[@]}"; do
   
   # Run torchrun for distributed training (adjust --nproc_per_node based on your GPU setup)
   torchrun --nproc_per_node=2 src/sft.py \
-      --model_name_or_path=$MODEL_NAME \
-      --dataset_name=$DS \
+      --model_name=${MODEL_NAME} \
+      --dataset_name=${DS} \
       --num_train_epochs=$EPOCHS \
       --learning_rate=$LR \
       --lr_scheduler_type="cosine" \
