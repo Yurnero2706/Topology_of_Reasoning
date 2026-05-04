@@ -14,5 +14,5 @@ python src/cluster_steps_generated.py \
     --batch_size 2 \
     --dataset $DATASET \
     --num_types $NUM_TYPES \
-    --df_path "$CSV_PATH" \
+    --df_path $CSV_PATH \
     --target_layer_ratio $TARGET_LAYER_RATIO
