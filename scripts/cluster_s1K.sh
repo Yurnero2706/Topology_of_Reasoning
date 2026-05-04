@@ -1,29 +1,24 @@
+# --- Cấu hình chung (Phụ lục J) ---
 MODEL_NAME="Qwen/Qwen2.5-3B"
-BLOCK_SIZE=32768 # Important: Set block size to 32768 to capture long-range dependencies in reasoning tasks [1]
+BLOCK_SIZE=32768
 LR=1e-5
 EPOCHS=5
-SAVE_STEPS=200 # Save checkpoint every 200 steps (adjust based on dataset size and training time) [2]
+SAVE_STEPS=200 # Để lưu checkpoint tại bước 200 và 400 [2]
 
-# --- Training loop for both datasets ---
+# --- 1. Giai đoạn Huấn luyện SFT (v1.0 và v1.1) ---
 DATASETS=("simplescaling/s1K" "simplescaling/s1K-1.1")
 
 for DS in "${DATASETS[@]}"; do
-  # Determine suffix based on dataset version for checkpoint naming
-  if [[ "$DS" == *"1.1"* ]]; then
-    SUFFIX="v1.1"
-  else
-    SUFFIX="v1.0"
-  fi
+  SUFFIX=$([[ "$DS" == *"1.1"* ]] && echo "v1.1" || echo "v1.0")
   OUTPUT_DIR="checkpoints/qwen3b-s1-$SUFFIX"
 
-  echo ">>> Bắt đầu huấn luyện SFT với $DS..."
-  
-  # Run torchrun for distributed training (adjust --nproc_per_node based on your GPU setup)
+  echo ">>> Đang huấn luyện SFT với $DS..."
+  # Effective batch size = 2 (GPUs) * 1 (per_device) * 4 (grad_accum) = 8 [3]
   torchrun --nproc_per_node=2 src/sft.py \
-      --model_name=${MODEL_NAME} \
+      --model_name_or_path=${MODEL_NAME} \
       --dataset_name=${DS} \
-      --num_train_epochs=$EPOCHS \
-      --learning_rate=$LR \
+      --num_train_epochs=${EPOCHS} \
+      --learning_rate=${LR} \
       --lr_scheduler_type="cosine" \
       --warmup_ratio=0.05 \
       --weight_decay=1e-4 \
@@ -33,36 +28,36 @@ for DS in "${DATASETS[@]}"; do
       --gradient_accumulation_steps=4 \
       --bf16=True \
       --gradient_checkpointing=True \
-      --block_size=$BLOCK_SIZE \
+      --block_size=${BLOCK_SIZE} \
       --fsdp="full_shard auto_wrap" \
-      --output_dir=$OUTPUT_DIR \
-      --save_steps=$SAVE_STEPS \
+      --output_dir=${OUTPUT_DIR} \
+      --save_steps=${SAVE_STEPS} \
       --logging_steps=10
 done
 
-# --- Bước trích xuất và phân tích đồ thị để tạo Hình 9 ---
-# Sau khi huấn luyện, bạn cần trích xuất trạng thái ẩn và tính đường kính
-# Hình 9 so sánh qua các Layer Ratio: 0.1, 0.3, 0.5, 0.7, 0.9 [1]
-
+# --- 2. Giai đoạn Phân tích Đồ thị (Sử dụng cluster_steps_generated.py) ---
+# Trục X của Hình 9 là Layer Ratio: 0.1, 0.3, 0.5, 0.7, 0.9 [4, 5]
 LAYER_RATIOS=("0.1" "0.3" "0.5" "0.7" "0.9")
 STEPS=("200" "400")
 
-echo ">>> Bắt đầu trích xuất đồ thị tư duy và tính toán đường kính..."
+echo ">>> Bắt đầu phân cụm và tính toán thuộc tính đồ thị..."
 
 for step in "${STEPS[@]}"; do
   for layer in "${LAYER_RATIOS[@]}"; do
     for suffix in "v1.0" "v1.1"; do
       MODEL_PATH="checkpoints/qwen3b-s1-$suffix/checkpoint-$step"
       
-      # Lệnh trích xuất (Sử dụng mã nguồn từ repo gouki510/Topology_of_Reasoning)
-      python src/extract_and_analyze.py \
-          --model_path $MODEL_PATH \
+      echo "Xử lý: $suffix | Step $step | Layer Ratio $layer"
+      
+      # cluster_steps_generated.py thực hiện K-means (K=200) và tính diameter [6, 7]
+      python src/cluster_steps_generated.py \
+          --model_path "$MODEL_PATH" \
           --dataset "AIME2024" \
-          --target_layer_ratio $layer \
+          --target_layer_ratio "$layer" \
           --k_clusters 200 \
-          --output_dir "results_fig9/step$step/$suffix/ratio$layer"
+          --output_dir "extract_steps/$suffix/step$step/ratio$layer"
     done
   done
 done
 
-echo ">>> Completed all training and analysis steps. Check results_fig9/ for the extracted graphs and diameter calculations."
+echo ">>> Hoàn thành. Kết quả results.json đã sẵn sàng để vẽ biểu đồ tương tự Hình 9."
