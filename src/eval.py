@@ -15,16 +15,20 @@ import calculator
 from model.generation_utils import make_sparse_mask
 from model.utils import model_name_mapping
 
-import atexit
+# This was for:
+# WARNING: destroy_process_group() was not called before program exit, which can leak resources.
+# which somehow, stop the program from running half-way.
 
-def _cleanup_dist():
-    try:
-        if torch.distributed.is_available() and torch.distributed.is_initialized():
-            torch.distributed.destroy_process_group()
-    except Exception as e:
-        print("Warning: destroy_process_group() failed:", e)
+# import atexit
 
-atexit.register(_cleanup_dist)
+# def _cleanup_dist():
+#     try:
+#         if torch.distributed.is_available() and torch.distributed.is_initialized():
+#             torch.distributed.destroy_process_group()
+#     except Exception as e:
+#         print("Warning: destroy_process_group() failed:", e)
+
+# atexit.register(_cleanup_dist)
 
 INVALID_ANS = "[invalid]"
 

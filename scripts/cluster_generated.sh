@@ -2,8 +2,8 @@
 
 ## GSM8K
 export HF_TOKEN=your_token
-CSV_PATH=results/Qwen2.5-3B/gsm8k
-DATASET=gsm8k #gsm8k, math_500, aime
+CSV_PATH=results/Qwen2.5-3B/simplescaling/s1
+DATASET=simplescaling/s1 #gsm8k, math_500, aime
 MODEL=Qwen/Qwen2.5-3B  #deepseek-ai/DeepSeek-R1-Distill-Qwen-32B, Qwen/Qwen2.5-32B
 NUM_TYPES=200
 TARGET_LAYER_RATIO=0.9 #0.1, 0.3, 0.5, 0.7, 0.9
