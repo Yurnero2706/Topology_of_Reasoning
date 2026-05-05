@@ -54,6 +54,12 @@ class DataArguments:
     prompt_template: Optional[str] = field(default=None)
     embedding_model_name: Optional[str] = field(default='all-mpnet-base-v2')
 
+def _cleanup_dist():
+    try:
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            torch.distributed.destroy_process_group()
+    except Exception as e:
+        print("Warning: destroy_process_group() failed:", e)
 
 def main():
 
@@ -220,4 +226,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        _cleanup_dist()
