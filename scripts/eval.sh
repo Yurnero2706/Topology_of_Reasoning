@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DATASET=gsm8k #gsm8k, math_500, aime
-MODEL=your_model #deepseek-ai/DeepSeek-R1-Distill-Qwen-32B, Qwen/Qwen2.5-32B
+MODEL=Qwen/Qwen2.5-3B #deepseek-ai/DeepSeek-R1-Distill-Qwen-32B, Qwen/Qwen2.5-32B
 EFFICIENT=none #none, parameter_efficient
 FLASH=True #True, False
 export HF_TOKEN=your_token
