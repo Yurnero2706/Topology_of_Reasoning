@@ -149,7 +149,7 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
             # q : [1], Question text
             # steps : [Steps], Step text
             example_rep = []
-            num_steps = int(torch.max(mask).item()) + 1
+            num_steps = torch.max(mask) + 1
             # Consider the newline in the question
             start = min(len(q), num_steps-1)
             for j in range(start, num_steps):
@@ -159,13 +159,8 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
                 if step_len > 0:
                     rep = (step_j_rep/step_len).cpu().numpy()
                     if np.isnan(rep).sum() == 0:
-                        idx = j - start
-                        if idx < len(steps):
-                            example_rep.append(rep)
-                            solution_steps.append(steps[idx])
-                        else:
-                            print(f"Warning: more token groups ({num_steps - start}) than steps ({len(steps)}). Skipping extra groups for this example.")
-                            break
+                        example_rep.append(rep)
+                        solution_steps.append(steps[j-start])
                 else:
                     assert False, "current step is empty"
             if len(example_rep) > 0:
