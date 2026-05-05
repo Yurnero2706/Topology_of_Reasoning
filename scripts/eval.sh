@@ -1,5 +1,6 @@
 #!/bin/sh
 
+export TORCH_DISTRIBUTED_DEBUG=DETAIL
 DATASET=simplescaling/s1 #gsm8k, math_500, aime
 MODEL=Qwen/Qwen2.5-3B #deepseek-ai/DeepSeek-R1-Distill-Qwen-32B, Qwen/Qwen2.5-32B
 EFFICIENT=none #none, parameter_efficient
