@@ -19,6 +19,12 @@ import pandas as pd
 import os
 cbar3d = None
 
+def ensure_parent_dir(path: str):
+    """Ensure the parent directory of `path` exists."""
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
 class Arrow3D(mpatches.FancyArrowPatch):
     def __init__(self, xs, ys, zs, *args, **kwargs):
         super(Arrow3D, self).__init__((0, 0), (0, 0), *args, **kwargs)
@@ -206,6 +212,8 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
     out_dir = f"{out_dir}/{selection_method}-k={num_types}"
     cluster_model_file = f"{out_dir}/{dataset_name}_{selection_method}_{num_types}.pkl"
     os.makedirs(f"{out_dir}", exist_ok=True)
+    # dataset_name may contain path separators; ensure the file parent exists
+    ensure_parent_dir(cluster_model_file)
     step_embeddings = np.float32(step_embeddings)
     # train_embeddings = deepcopy(step_embeddings)
     print("k-means start")
@@ -215,6 +223,7 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
     print("cluster_model.labels_: ", cluster_model.labels_)
     print("cluster_model.cluster_centers_: ", cluster_model.cluster_centers_)
 
+    ensure_parent_dir(cluster_model_file)
     with open(cluster_model_file, 'wb') as f:
         pickle.dump(cluster_model, f)
 
@@ -228,7 +237,9 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
 
     for i in range(num_types):
         # print(f"cluster {i}: ", np.sum(cluster_model.labels_==i))
-        with open(f"{out_dir}/{dataset_name}_{num_types}_{i}.txt", 'w') as f:
+        file_path = f"{out_dir}/{dataset_name}_{num_types}_{i}.txt"
+        ensure_parent_dir(file_path)
+        with open(file_path, 'w') as f:
             f.write('\n'.join(list(solution_steps[cluster_model.labels_==i])))
     tsne_file = f"{out_dir}/tsne.npy"
 
@@ -279,6 +290,7 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
         
         steps = [step.strip() for step in steps if len(step.strip())>5]
         out_txt = os.path.join(visualize_dir, f"{dataset_name}_steps_{index}.txt")
+        ensure_parent_dir(out_txt)
 
         # get the number of lines (number of steps)
         num_lines = len(steps)
@@ -779,7 +791,9 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
         print(f"Saved 3D GIF → {gif_path}")
         
     # save results
-    with open(f"{out_dir}results.json", 'w') as f:
+    results_file = os.path.join(out_dir, "results.json")
+    ensure_parent_dir(results_file)
+    with open(results_file, 'w') as f:
         json.dump(loop_detection_results, f)
 
 
