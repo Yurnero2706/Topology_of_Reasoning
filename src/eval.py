@@ -15,6 +15,17 @@ import calculator
 from model.generation_utils import make_sparse_mask
 from model.utils import model_name_mapping
 
+import atexit
+
+def _cleanup_dist():
+    try:
+        if torch.distributed.is_available() and torch.distributed.is_initialized():
+            torch.distributed.destroy_process_group()
+    except Exception as e:
+        print("Warning: destroy_process_group() failed:", e)
+
+atexit.register(_cleanup_dist)
+
 INVALID_ANS = "[invalid]"
 
 
@@ -53,13 +64,6 @@ class DataArguments:
     num_test: Optional[int] = field(default=1000)
     prompt_template: Optional[str] = field(default=None)
     embedding_model_name: Optional[str] = field(default='all-mpnet-base-v2')
-
-def _cleanup_dist():
-    try:
-        if torch.distributed.is_available() and torch.distributed.is_initialized():
-            torch.distributed.destroy_process_group()
-    except Exception as e:
-        print("Warning: destroy_process_group() failed:", e)
 
 def main():
 
@@ -226,7 +230,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    finally:
-        _cleanup_dist()
+    main()
