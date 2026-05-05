@@ -47,10 +47,14 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
                       model_max_length = 1024, selection_method='k-means', output_dir='extract_steps', \
                       cache_dir=None, num_types=50, df_path:str=None, target_layer_ratio=0.5):
 
-    out_dir = f"{output_dir}/{model_name_or_path}/{dataset_name}/target_layer_ratio={target_layer_ratio}"
-    visualize_dir = f"{output_dir}/{model_name_or_path}/{dataset_name}/target_layer_ratio={target_layer_ratio}/visualize"
-    
+    # normalize model name/path (may rewrite e.g. short -> full HF id)
     model_name_or_path = model_name_mapping(model_name_or_path)
+
+    out_dir = f"{output_dir}/{model_name_or_path}/{dataset_name}/target_layer_ratio={target_layer_ratio}"
+    visualize_dir = f"{out_dir}/visualize"
+    # make sure base output dirs exist early so any later saves won't fail
+    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(visualize_dir, exist_ok=True)
     
     tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name_or_path, legacy=False)
     tokenizer.model_max_length = model_max_length
@@ -70,8 +74,11 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
     embedding_file = f"{out_dir}/{dataset_name}_embedding.npy"
     text_file = f"{out_dir}/{dataset_name}_text.npy"
     example_id_file = f"{out_dir}/{dataset_name}_example_id.npy"
-    os.makedirs(out_dir, exist_ok=True)
-    os.makedirs(visualize_dir, exist_ok=True)
+
+    # Extra safety: ensure parent directories for each output file exist
+    os.makedirs(os.path.dirname(embedding_file), exist_ok=True)
+    os.makedirs(os.path.dirname(text_file), exist_ok=True)
+    os.makedirs(os.path.dirname(example_id_file), exist_ok=True)
 
     ### load model
     embedding_model = transformers.AutoModelForCausalLM.from_pretrained(
