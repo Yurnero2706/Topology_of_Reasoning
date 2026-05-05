@@ -227,6 +227,8 @@ def analyze_graph(path, distances):
 
 from collections import defaultdict
 import heapq
+import math
+from collections import deque
 
 def analyze_graph_v2(path, distances):
     """
@@ -333,4 +335,58 @@ def analyze_graph_v2(path, distances):
     C_rand = (K / (N - 1)) if N > 1 else 0.0
     clustering_norm = avg_clustering / C_rand if C_rand else 0.0
 
-    return has_loop, loop_count, diameter, avg_clustering, avg_path_length, clustering_norm
+    # --- 7) パス長の正規化 (ランダムグラフ期待値) ---
+    # ランダムグラフにおける平均最短経路長の近似: L_rand ≈ ln(N) / ln(K)
+    if N > 1 and K > 1:
+        try:
+            L_rand = math.log(N) / math.log(K)
+        except Exception:
+            L_rand = 0.0
+    else:
+        L_rand = 0.0
+    path_length_norm = avg_path_length / L_rand if L_rand else 0.0
+
+    # --- 8) 平均ホップ長（非重み付き最短経路の平均） ---
+    total_hops = 0
+    total_hop_pairs = 0
+    # consider BFS from each node that has outgoing edges
+    all_nodes = set(adj.keys()) | set(v for vs in adj.values() for v, _ in vs)
+    for start in all_nodes:
+        # BFS (unweighted) on directed adjacency
+        dist = {start: 0}
+        dq = deque([start])
+        while dq:
+            u = dq.popleft()
+            for v_w in adj.get(u, []):
+                v = v_w[0]
+                if v not in dist:
+                    dist[v] = dist[u] + 1
+                    dq.append(v)
+        for v, d in dist.items():
+            if v != start:
+                total_hops += d
+                total_hop_pairs += 1
+    avg_hop_length = total_hops / total_hop_pairs if total_hop_pairs else 0.0
+
+    # --- 9) ホップ長の正規化 ---
+    hop_length_norm = avg_hop_length / L_rand if L_rand else 0.0
+
+    # --- 10) Small-world index (Humphries & Gurney style) ---
+    # S = (C / C_rand) / (L / L_rand)
+    if path_length_norm:
+        small_world_index = clustering_norm / path_length_norm
+    else:
+        small_world_index = 0.0
+
+    return (
+        has_loop,
+        loop_count,
+        diameter,
+        avg_clustering,
+        avg_path_length,
+        clustering_norm,
+        path_length_norm,
+        avg_hop_length,
+        hop_length_norm,
+        small_world_index,
+    )
