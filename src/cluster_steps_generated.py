@@ -161,33 +161,53 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
             # mask : [seq_len]
             # q : [1], Question text
             # steps : [Steps], Step text
-            example_rep = []
             num_steps = int(torch.max(mask).item()) + 1
             # Consider the newline in the question
             start = min(len(q), num_steps-1)
+
+            # Accumulate embeddings per step index (handle extra token groups by mapping to last step)
+            example_rep_sums = []
+            example_rep_counts = []
             for j in range(start, num_steps):
                 step_j_mask = (mask == j).int().float()
                 step_j_rep = (hidden * step_j_mask.unsqueeze(-1)).sum(0)
                 step_len = step_j_mask.sum()
-                if step_len > 0:
-                    rep = (step_j_rep/step_len).cpu().numpy()
-                    if np.isnan(rep).sum() == 0:
-                        idx = j - start
-                        if idx < len(steps):
-                            example_rep.append(rep)
-                            solution_steps.append(steps[idx])
-                        else:
-                            print(f"Warning: more token groups ({num_steps - start}) than steps ({len(steps)}). Skipping extra groups for this example.")
-                            break
-                else:
-                    assert False, "current step is empty"
+                if step_len <= 0:
+                    raise AssertionError("current step is empty")
+                rep = (step_j_rep/step_len).cpu().numpy()
+                if np.isnan(rep).sum() != 0:
+                    continue
+
+                idx = j - start
+                # map overflow groups to the last step index
+                target_idx = idx if idx < len(steps) else (len(steps) - 1)
+
+                # ensure lists are long enough
+                while len(example_rep_sums) <= target_idx:
+                    example_rep_sums.append(np.zeros_like(rep))
+                    example_rep_counts.append(0)
+
+                example_rep_sums[target_idx] += rep
+                example_rep_counts[target_idx] += 1
+
+            # build averaged representations and corresponding step texts
+            example_rep = []
+            for k, s in enumerate(example_rep_sums):
+                cnt = example_rep_counts[k]
+                if cnt > 0:
+                    avg = s / cnt
+                    example_rep.append(avg)
+                    # only append step text if within bounds
+                    if k < len(steps):
+                        solution_steps.append(steps[k])
+
             if len(example_rep) > 0:
                 example_rep = np.stack(example_rep, axis=0)
                 step_embeddings.append(example_rep)
                 example_ids += [ex_id for _ in range(len(example_rep))]
                 ex_id += 1
             else:
-                assert False, "no step embeddings"
+                raise AssertionError("no step embeddings")
         
     step_embeddings = np.concatenate(step_embeddings, axis=0)
     solution_steps = np.array(solution_steps)
@@ -345,25 +365,42 @@ def extract_step_type(dataset_name:str, model_name_or_path:str, batch_size:int, 
             # mask : [seq_len]
             # q : [1], Question text
             # steps : [Steps], Step text
-            example_rep = []
             num_steps = torch.max(mask) + 1
             # Consider the newline in the question
             start = min(len(q), num_steps-1)
+
+            # Accumulate per-step embeddings; map overflow groups to last step
+            example_rep_sums = []
+            example_rep_counts = []
             for j in range(start, num_steps):
                 step_j_mask = (mask == j).int().float()
                 step_j_rep = (hidden * step_j_mask.unsqueeze(-1)).sum(0)
                 step_len = step_j_mask.sum()
-                if step_len > 0:
-                    rep = (step_j_rep/step_len).cpu().numpy()
-                    if np.isnan(rep).sum() == 0:
-                        example_rep.append(rep)
-                else:
-                    assert False, "current step is empty"
+                if step_len <= 0:
+                    raise AssertionError("current step is empty")
+                rep = (step_j_rep/step_len).cpu().numpy()
+                if np.isnan(rep).sum() != 0:
+                    continue
+
+                idx = int(j - start)
+                target_idx = idx if idx < len(steps) else (len(steps) - 1)
+                while len(example_rep_sums) <= target_idx:
+                    example_rep_sums.append(np.zeros_like(rep))
+                    example_rep_counts.append(0)
+                example_rep_sums[target_idx] += rep
+                example_rep_counts[target_idx] += 1
+
+            example_rep = []
+            for k, s in enumerate(example_rep_sums):
+                cnt = example_rep_counts[k]
+                if cnt > 0:
+                    example_rep.append(s / cnt)
+
             if len(example_rep) > 0:
                 example_rep = np.stack(example_rep, axis=0)
                 step_embeddings.append(example_rep)
             else:
-                assert False, "no step embeddings"
+                raise AssertionError("no step embeddings")
         step_embeddings = np.concatenate(step_embeddings, axis=0)
         # print(f"step_embeddings.shape: {step_embeddings.shape}")
 
