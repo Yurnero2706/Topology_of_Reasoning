@@ -570,7 +570,7 @@ class S1K_DATA(BaseData):
                                         step_type_predictor)
 
     def load_data(self, split: str):
-        return load_dataset('simplescaling/s1K')[split]
+        return load_dataset('simplescaling/s1K')["train"]
     
     def parse_q_a(self, example):
         q = example["question"].strip()
