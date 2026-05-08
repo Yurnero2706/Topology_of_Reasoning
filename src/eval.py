@@ -9,7 +9,7 @@ import numpy as np
 from huggingface_hub import login
 from vllm import LLM, SamplingParams
 
-from load_data.preprocess import GSMData, MathData, AquaData, SVAMPData, MATH_500Data, AIME_DATA
+from load_data.preprocess import GSMData, MathData, AquaData, SVAMPData, MATH_500Data, AIME_DATA, S1K_DATA
 from load_data.k_shot_dataset import KshotDataset
 import calculator
 from model.generation_utils import make_sparse_mask
@@ -118,6 +118,8 @@ def main():
         data_class = MATH_500Data
     elif data_args.dataset == "aime":
         data_class = AIME_DATA
+    elif data_args.dataset == "simplescaling/s1K":
+        data_class = S1K_DATA
     else:
         raise NotImplementedError
 

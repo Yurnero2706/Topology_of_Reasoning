@@ -556,3 +556,34 @@ class AIME_DATA(BaseData):
         ans = str(ans)
         inst = 'Solve the following problem step by step, and give the exact answer.'
         return inst, q, cot_steps, ans
+
+class S1K_DATA(BaseData):
+    def __init__(self, split: str, soft_prompt_text: list, 
+                 invalid_ans="[invalid]", add_soft_prompts=False, 
+                 only_at_front=False, plan_first=False, plan_only=False,
+                 prompt_template=None, step_type_ids=None, tokenizer=None,
+                 step_type_predictor=None):
+        super(S1K_DATA, self).__init__(split, soft_prompt_text, 
+                                        invalid_ans, add_soft_prompts, 
+                                        only_at_front, plan_first, plan_only,
+                                        prompt_template, step_type_ids, tokenizer,
+                                        step_type_predictor)
+
+    def load_data(self, split: str):
+        return load_dataset('simplescaling/s1K')[split]
+    
+    def parse_q_a(self, example):
+        q = example["question"].strip()
+        cot = example["solution"].strip()
+        cot = cot.split('. ')
+        cot_steps = []
+        for step in cot:
+            for s in step.strip().split('\n'):
+                s = s.strip()
+                if len(s) == 0:
+                    continue
+                cot_steps.append(s)
+        ans = example["answer"]
+        ans = str(ans)
+        inst = 'Solve the following problem step by step, and give the exact answer.'
+        return inst, q, cot_steps, ans
