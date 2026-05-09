@@ -8,7 +8,7 @@ FLASH=True #True, False
 export HF_TOKEN=your_token
 TMP_TIME=$(date +%Y%m%d%H%M%S)
 OUTPUT_DIR=eval_result/simplescaling/s1/$MODEL/${TMP_TIME}
-CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port 46381 \
+CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc-per-node=2 --master_port 46381 \
     python src/eval.py \
     --base_model_name_or_path $MODEL \
     --model_name_or_path $MODEL \
