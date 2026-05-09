@@ -161,10 +161,18 @@ def main():
     
     dataloader = DataLoader(dataset, batch_size=data_args.batch_size, shuffle=False)
 
+    # sanitize dataset name to avoid creating nested directories from '/' in dataset strings
+    safe_dataset = data_args.dataset.replace('/', '_').replace('\\', '_')
     if data_args.use_demonstrations:
-        out_file_name = f'{model_args.output_dir}/{data_args.dataset}_test_cal={model_args.use_calculator}_demo={data_args.demo_selection}_k={data_args.k_shot}_output.txt'
+        out_file_name = os.path.join(model_args.output_dir, f'{safe_dataset}_test_cal={model_args.use_calculator}_demo={data_args.demo_selection}_k={data_args.k_shot}_output.txt')
     else:
-        out_file_name = f'{model_args.output_dir}/{data_args.dataset}_test_cal={model_args.use_calculator}_output.txt'
+        out_file_name = os.path.join(model_args.output_dir, f'{safe_dataset}_test_cal={model_args.use_calculator}_output.txt')
+
+    # pre-create parent directory for the CSV to avoid pandas OSError later
+    csv_path_pre = out_file_name.replace('.txt', '.csv')
+    dirpath_pre = os.path.dirname(csv_path_pre)
+    if dirpath_pre:
+        os.makedirs(dirpath_pre, exist_ok=True)
             
     output = []
     num_correct = 0
