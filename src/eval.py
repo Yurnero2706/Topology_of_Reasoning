@@ -229,8 +229,12 @@ def main():
 
     # to csv
     import pandas as pd
+    csv_path = out_file_name.replace('.txt', '.csv')
+    dirpath = os.path.dirname(csv_path)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
     df = pd.DataFrame(output, columns=['Question', 'generated_text', 'Answer', 'correct'])
-    df.to_csv(out_file_name.replace('.txt', '.csv'), index=False)
+    df.to_csv(csv_path, index=False)
 
 
 if __name__ == "__main__":
