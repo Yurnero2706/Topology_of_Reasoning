@@ -9,7 +9,7 @@ import numpy as np
 from huggingface_hub import login
 from vllm import LLM, SamplingParams
 
-from load_data.preprocess import GSMData, MathData, AquaData, SVAMPData, MATH_500Data, AIME_DATA
+from load_data.preprocess import GSMData, MathData, AquaData, SVAMPData, MATH_500Data, AIME_DATA, S1K_DATA
 from load_data.k_shot_dataset import KshotDataset
 import calculator
 from model.generation_utils import make_sparse_mask
@@ -118,6 +118,8 @@ def main():
         data_class = MATH_500Data
     elif data_args.dataset == "aime":
         data_class = AIME_DATA
+    elif data_args.dataset == "simplescaling/s1K":
+        data_class = S1K_DATA
     else:
         raise NotImplementedError
 
@@ -161,10 +163,18 @@ def main():
     
     dataloader = DataLoader(dataset, batch_size=data_args.batch_size, shuffle=False)
 
+    # sanitize dataset name to avoid creating nested directories from '/' in dataset strings
+    safe_dataset = data_args.dataset.replace('/', '_').replace('\\', '_')
     if data_args.use_demonstrations:
-        out_file_name = f'{model_args.output_dir}/{data_args.dataset}_test_cal={model_args.use_calculator}_demo={data_args.demo_selection}_k={data_args.k_shot}_output.txt'
+        out_file_name = os.path.join(model_args.output_dir, f'{safe_dataset}_test_cal={model_args.use_calculator}_demo={data_args.demo_selection}_k={data_args.k_shot}_output.txt')
     else:
-        out_file_name = f'{model_args.output_dir}/{data_args.dataset}_test_cal={model_args.use_calculator}_output.txt'
+        out_file_name = os.path.join(model_args.output_dir, f'{safe_dataset}_test_cal={model_args.use_calculator}_output.txt')
+
+    # pre-create parent directory for the CSV to avoid pandas OSError later
+    csv_path_pre = out_file_name.replace('.txt', '.csv')
+    dirpath_pre = os.path.dirname(csv_path_pre)
+    if dirpath_pre:
+        os.makedirs(dirpath_pre, exist_ok=True)
             
     output = []
     num_correct = 0
