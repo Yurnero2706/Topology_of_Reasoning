@@ -583,7 +583,79 @@ class S1K_DATA(BaseData):
                 if len(s) == 0:
                     continue
                 cot_steps.append(s)
-        ans = example["answer"]
+        ans = self.extract_answer(example["solution"])
         ans = str(ans)
         inst = 'Solve the following problem step by step, and give the exact answer.'
         return inst, q, cot_steps, ans
+    
+    def extract_answer(self, completion):
+        if'The answer is:' in completion:
+            pred = completion.split('The answer is:')[-1].strip()
+        elif'The answer is ' in completion:
+            pred = completion.split('the answer is ')[-1].strip()
+        elif'the answer is ' in completion:
+            pred = completion.split('the answer is ')[-1].strip()
+        elif 'boxed' in completion:
+            ans = completion.split('boxed')[-1]
+            if (ans[0] == '{'):
+                stack = 1
+                a = ''
+                for c in ans[1:]:
+                    if (c == '{'):
+                        stack += 1
+                        a += c
+                    elif (c == '}'):
+                        stack -= 1
+                        if (stack == 0): break
+                        a += c
+                    else:
+                        a += c
+            else:
+                a = ans.split('$')[0].strip()
+            a = _strip_string(a)
+            pred=a
+
+        else:
+            pattern = '-?\d*\.?\d+'
+            pred = re.findall(pattern, completion)
+            if(len(pred) >= 1):
+                pred = pred[-1]
+            else: pred = ''
+        if pred != "":
+            if pred[-1] == ".":
+                pred = pred[:-1]
+            if pred[-1] == "/":
+                pred = pred[:-1]
+        pred=_strip_string(pred)
+        if 'boxed' in pred:
+            ans = pred.split('boxed')[-1]
+            if (ans[0] == '{'):
+                stack = 1
+                a = ''
+                for c in ans[1:]:
+                    if (c == '{'):
+                        stack += 1
+                        a += c
+                    elif (c == '}'):
+                        stack -= 1
+                        if (stack == 0): break
+                        a += c
+                    else:
+                        a += c
+            else:
+                a = ans.split('$')[0].strip()
+            a = _strip_string(a)
+            pred=a
+        return pred
+
+    def is_correct(self, model_completion, gt_example):
+        gt_answer = self.extract_answer(gt_example)
+        print(gt_answer)
+        assert gt_answer != self.INVALID_ANS
+        try:
+            pred_answer = self.extract_answer(model_completion)
+            print(pred_answer)
+        except:
+            print(model_completion)
+            pred_answer = self.INVALID_ANS
+        return compare_both_string_and_number_format(pred_answer, gt_answer)
