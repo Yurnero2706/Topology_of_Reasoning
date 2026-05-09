@@ -23,5 +23,4 @@ CUDA_VISIBLE_DEVICES=0,1 python src/eval.py \
     --load_in_8bit True \
     --flash_attention $FLASH \
     --num_test 1000 \
-    --output_dir $OUTPUT_DIR \
-    --num_shards 2
+    --output_dir $OUTPUT_DIR
