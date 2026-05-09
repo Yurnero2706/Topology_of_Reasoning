@@ -8,7 +8,8 @@ FLASH=True #True, False
 export HF_TOKEN=your_token
 TMP_TIME=$(date +%Y%m%d%H%M%S)
 OUTPUT_DIR=eval_result/simplescaling/s1/$MODEL/${TMP_TIME}
-CUDA_VISIBLE_DEVICES=0 python src/eval.py \
+CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 \
+    python src/eval.py \
     --base_model_name_or_path $MODEL \
     --model_name_or_path $MODEL \
     --parameter_efficient_mode $EFFICIENT \
@@ -20,3 +21,4 @@ CUDA_VISIBLE_DEVICES=0 python src/eval.py \
     --flash_attention $FLASH \
     --num_test 1000 \
     --output_dir $OUTPUT_DIR \
+    --num_shards 2
