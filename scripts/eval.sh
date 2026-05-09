@@ -1,12 +1,12 @@
 #!/bin/sh
 
 export TORCH_DISTRIBUTED_DEBUG=DETAIL
-DATASET="simplescaling/s1K" #gsm8k, math_500, aime
+DATASET="gsm8k" #gsm8k, math_500, aime
 MODEL=Qwen/Qwen2.5-3B #deepseek-ai/DeepSeek-R1-Distill-Qwen-32B, Qwen/Qwen2.5-32B
 EFFICIENT=none #none, parameter_efficient
 FLASH=True #True, False
 export HF_TOKEN=your_token
-TMP_TIME=$(date +%Y%m%d%H%M%S)
+TMP_TIME=$(date +%Y%m%d_%H%M%S)
 OUTPUT_DIR=eval_result/simplescaling/s1/$MODEL/${TMP_TIME}
 SAFE=${DATASET//\//_}
 CSV_PATH="$OUTPUT_DIR/${SAFE}_test_cal=False_output.csv"
