@@ -12,8 +12,7 @@ SAFE=${DATASET//\//_}
 CSV_PATH="$OUTPUT_DIR/${SAFE}_test_cal=False_output.csv"
 mkdir -p "$(dirname "$CSV_PATH")" && echo ok > "$CSV_PATH" && echo "wrote $CSV_PATH"
 
-CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port 46381 \
-    python src/eval.py \
+CUDA_VISIBLE_DEVICES=0,1 python src/eval.py \
     --base_model_name_or_path $MODEL \
     --model_name_or_path $MODEL \
     --parameter_efficient_mode $EFFICIENT \
