@@ -659,3 +659,5 @@ class S1K_DATA(BaseData):
             print(model_completion)
             pred_answer = self.INVALID_ANS
         return compare_both_string_and_number_format(pred_answer, gt_answer)
+    
+#Súc vật viết code
