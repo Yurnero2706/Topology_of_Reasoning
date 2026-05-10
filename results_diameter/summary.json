@@ -1,0 +1,54 @@
+{
+  "Base(Qwen2.5-14B)": {
+    "0.1": {
+      "n_samples": 533,
+      "mean_diameter": 63.40511259397467,
+      "median_diameter": 60.111701011657715,
+      "std_diameter": 39.227284190415816,
+      "cycle_ratio": 0.7879924953095685,
+      "mean_loop_count": 1.973733583489681,
+      "mean_small_world": 0.06206524576922959,
+      "mean_avg_path_len": 27.815525717567905
+    },
+    "0.3": {
+      "n_samples": 533,
+      "mean_diameter": 181.41339225527494,
+      "median_diameter": 172.93945503234863,
+      "std_diameter": 116.43608361196866,
+      "cycle_ratio": 0.7842401500938087,
+      "mean_loop_count": 1.827392120075047,
+      "mean_small_world": 0.02093300712758979,
+      "mean_avg_path_len": 79.05240834702737
+    },
+    "0.5": {
+      "n_samples": 533,
+      "mean_diameter": 268.2242246917667,
+      "median_diameter": 251.19630432128906,
+      "std_diameter": 172.17752450869523,
+      "cycle_ratio": 0.7636022514071295,
+      "mean_loop_count": 1.675422138836773,
+      "mean_small_world": 0.015444102601509947,
+      "mean_avg_path_len": 113.13851014634722
+    },
+    "0.7": {
+      "n_samples": 533,
+      "mean_diameter": 548.2320621447536,
+      "median_diameter": 536.2714347839355,
+      "std_diameter": 347.6848766263476,
+      "cycle_ratio": 0.7711069418386491,
+      "mean_loop_count": 1.4427767354596623,
+      "mean_small_world": 0.007190375125382396,
+      "mean_avg_path_len": 230.84494561508464
+    },
+    "0.9": {
+      "n_samples": 533,
+      "mean_diameter": 1069.094155517349,
+      "median_diameter": 1062.8194885253906,
+      "std_diameter": 655.9665461151674,
+      "cycle_ratio": 0.776735459662289,
+      "mean_loop_count": 2.0562851782363976,
+      "mean_small_world": 0.003563100357011622,
+      "mean_avg_path_len": 476.2531387572009
+    }
+  }
+}
