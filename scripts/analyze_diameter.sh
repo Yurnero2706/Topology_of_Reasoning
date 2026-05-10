@@ -30,9 +30,11 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0.  Shared hyper-parameters — kept in sync with sft.sh
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-14B"   # sft.sh: base_model="Qwen/Qwen2.5-14B"
-BLOCK_SIZE=32768                # sft.sh: --block_size=32768
-NUM_TYPES=200                   # paper default: K-means k=200
+BASE_MODEL="Qwen/Qwen2.5-14B"  # Table 3: Base Model = Qwen2.5-14B
+BLOCK_SIZE=32768                         # Table 3: Block Size = 32768 tokens
+BATCH_SIZE=8                             # Table 3: Batch Size = 8 (8 GPUs × micro-batch 1)
+TORCH_DTYPE="bfloat16"                   # Table 3: Precision = bf16
+NUM_TYPES=200                            # paper default: K-means k=200
 
 # Which training dataset was used for each checkpoint.
 # Matches sft.sh: --train_file_path="simplescaling/s1K"
@@ -58,11 +60,11 @@ CACHE_DIR="${HF_HOME:-${HOME}/.cache/huggingface}"
 # 3.  Smoke-test mode — fewer samples / ratios / clusters
 # ---------------------------------------------------------------------------
 if [[ "${SMOKE_TEST:-0}" == "1" ]]; then
-    echo "[SMOKE-TEST MODE]  max_samples=5, ratio=0.9, num_types=50"
+    echo "[SMOKE-TEST MODE]  max_samples=5, ratio=0.9, num_types=50, max_len=2048"
     MAX_SAMPLES="--max_samples 5"
     TARGET_LAYER_RATIOS="0.9"
     NUM_TYPES=50
-    BLOCK_SIZE=2048
+    BLOCK_SIZE=2048           # reduced from 32768 just for the smoke-test
     OUTPUT_DIR="results_diameter_smoke"
 else
     MAX_SAMPLES=""
@@ -125,6 +127,8 @@ python src/analyze_diameter.py \
     --target_layer_ratios ${TARGET_LAYER_RATIOS} \
     --num_types    "${NUM_TYPES}" \
     --model_max_length "${BLOCK_SIZE}" \
+    --batch_size   "${BATCH_SIZE}" \
+    --torch_dtype  "${TORCH_DTYPE}" \
     --output_dir   "${OUTPUT_DIR}" \
     --cache_dir    "${CACHE_DIR}" \
     ${MAX_SAMPLES}

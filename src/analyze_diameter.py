@@ -17,23 +17,23 @@ For each model checkpoint and each target-layer ratio we:
      one box+mean-line per model — exactly the style of Figure in Appendix J.
 
 Training hyper-parameters are inherited from sft.sh:
-  model  = Qwen/Qwen2.5-3B
+  model  = Qwen/Qwen2.5-14B
   block_size (model_max_length) = 10 000
 
 Typical usage — compare base model vs two SFT checkpoints
 ----------------------------------------------------------
 python analyze_diameter.py \
-    --model_paths  Qwen/Qwen2.5-3B  ckpts/s1-v1.0  ckpts/s1-v1.1 \
-    --model_labels "Base"           "s1-v1.0"       "s1-v1.1" \
+    --model_paths  Qwen/Qwen2.5-32B-Instruct  ckpts/s1-v1.0  ckpts/s1-v1.1 \
+    --model_labels "Base"                      "s1-v1.0"      "s1-v1.1" \
     --dataset simplescaling/s1K \
     --target_layer_ratios 0.1 0.3 0.5 0.7 0.9 \
     --num_types 200 \
-    --model_max_length 10000 \
+    --model_max_length 32768 \
     --output_dir results_diameter
 
 Quick smoke-test (5 samples, CPU):
 python analyze_diameter.py \
-    --model_paths Qwen/Qwen2.5-3B \
+    --model_paths Qwen/Qwen2.5-32B-Instruct \
     --model_labels "Base" \
     --dataset simplescaling/s1K \
     --max_samples 5 \
@@ -167,11 +167,14 @@ def collect_step_embeddings(
     df,                                          # pandas DataFrame
     target_layer: int,
     max_length:   int,
+    batch_size:   int = 8,
 ) -> Tuple[List[np.ndarray], List[List[str]]]:
     """
-    Iterate once over *df* and return:
+    Iterate over *df* in batches of *batch_size* and return:
       all_reps  — list of float32 arrays [T_i, H], one per valid example
       all_texts — corresponding list of solution-step string lists
+
+    batch_size=8 matches Table 3 (8 GPUs × micro-batch 1).
     """
     device   = next(model.parameters()).device
     nl_ids   = _newline_token_ids(tokenizer).to(device)
@@ -179,28 +182,37 @@ def collect_step_embeddings(
     all_reps:  List[np.ndarray] = []
     all_texts: List[List[str]]  = []
 
-    for _, row in tqdm(df.iterrows(), total=len(df), desc="    extracting"):
-        # ── read question ────────────────────────────────────────────────── #
-        question = row.get("Question") or row.get("question") or ""
+    rows = list(df.iterrows())
+    for batch_start in tqdm(range(0, len(rows), batch_size), desc="    extracting"):
+        batch_rows = rows[batch_start: batch_start + batch_size]
 
-        # ── read solution text (handles s1K column names) ─────────────────- #
-        solution = (
-            row.get("generated_text")
-            or row.get("text")
-            or row.get("solution")
-            or ""
-        )
-        steps = [s.strip() for s in str(solution).strip().split("\n")
-                 if len(s.strip()) > 5]
-        if len(steps) < 2:
+        prompts:        List[str]       = []
+        question_lines_list: List[List[str]] = []
+        steps_list:     List[List[str]] = []
+
+        for _, row in batch_rows:
+            question = row.get("Question") or row.get("question") or ""
+            solution = (
+                row.get("generated_text")
+                or row.get("text")
+                or row.get("solution")
+                or ""
+            )
+            steps = [s.strip() for s in str(solution).strip().split("\n")
+                     if len(s.strip()) > 5]
+            if len(steps) < 2:
+                continue
+            q_lines = question.strip().split("\n")
+            prompt  = QUERY_TEMPLATE.format(Question=question) + "\n".join(steps[:-1])
+            prompts.append(prompt)
+            question_lines_list.append(q_lines)
+            steps_list.append(steps)
+
+        if not prompts:
             continue
 
-        question_lines = question.strip().split("\n")
-        # Feed question + all-but-last step (mirror cluster_steps_generated.py)
-        prompt = QUERY_TEMPLATE.format(Question=question) + "\n".join(steps[:-1])
-
         inputs = tokenizer(
-            [prompt],
+            prompts,
             return_tensors="pt",
             padding="longest",
             max_length=max_length,
@@ -214,19 +226,19 @@ def collect_step_embeddings(
                 return_dict=True,
             )
 
-        # hidden_states: tuple of [1, seq_len, H],  index 0 = embedding layer
-        hidden = outputs.hidden_states[target_layer][0]   # [seq_len, H]
+        # hidden_states: tuple of [batch, seq_len, H]
+        hidden_batch = outputs.hidden_states[target_layer]   # [B, seq_len, H]
 
-        # build step-index mask (same cumsum trick as cluster_steps_generated.py)
-        is_newline = torch.isin(inputs["input_ids"], nl_ids)   # [1, seq_len]
-        step_mask  = (
-            torch.cumsum(is_newline, dim=-1) * inputs["attention_mask"]
-        )[0]                                                    # [seq_len]
+        is_newline  = torch.isin(inputs["input_ids"], nl_ids)            # [B, seq_len]
+        step_masks  = torch.cumsum(is_newline, dim=-1) * inputs["attention_mask"]  # [B, seq_len]
 
-        rep = _step_reps_from_hidden(hidden, step_mask, question_lines, steps)
-        if rep is not None:
-            all_reps.append(rep)
-            all_texts.append(steps)
+        for hidden, step_mask, q_lines, steps in zip(
+            hidden_batch, step_masks, question_lines_list, steps_list
+        ):
+            rep = _step_reps_from_hidden(hidden, step_mask, q_lines, steps)
+            if rep is not None:
+                all_reps.append(rep)
+                all_texts.append(steps)
 
     return all_reps, all_texts
 
@@ -461,15 +473,25 @@ def main() -> None:
         "--num_types", type=int, default=200,
         help="K-means clusters (paper default: 200).",
     )
-    # matches sft.sh block_size=10000
+    # matches Table 3 (Appendix J): Block Size = 32768 tokens
+    # (sft.sh used 10000; the paper's actual SFT experiments used 32768)
     parser.add_argument(
-        "--model_max_length", type=int, default=10000,
-        help="Max token length — matches sft.sh block_size=10000.",
+        "--model_max_length", type=int, default=32768,
+        help="Max token length — matches Table 3 Block Size = 32768.",
     )
     # ── infra ────────────────────────────────────────────────────────────── #
     parser.add_argument(
         "--output_dir", type=str, default="results_diameter",
         help="Root directory for JSON caches and plots.",
+    )
+    parser.add_argument(
+        "--batch_size", type=int, default=8,
+        help="Inference batch size — Table 3: 8 (8 GPUs × micro-batch 1).",
+    )
+    parser.add_argument(
+        "--torch_dtype", type=str, default="bfloat16",
+        choices=["bfloat16", "float16", "float32"],
+        help="Model precision — Table 3: bf16.",
     )
     parser.add_argument(
         "--cache_dir", type=str, default=None,
@@ -508,10 +530,12 @@ def main() -> None:
         logger.info(f"  Path: {model_path}")
 
         # ── load model + tokenizer ───────────────────────────────────────── #
+        dtype_map = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}
+        torch_dtype = dtype_map[args.torch_dtype]
         logger.info("  Loading model …")
         model = transformers.AutoModelForCausalLM.from_pretrained(
             model_path,
-            torch_dtype=torch.float16,
+            torch_dtype=torch_dtype,
             device_map="auto",
             trust_remote_code=True,
             cache_dir=args.cache_dir,
@@ -527,10 +551,11 @@ def main() -> None:
             cache_dir=args.cache_dir,
         )
         # Mirror sft.py pad-token convention for Qwen / Llama
+        # Table 3 model is Qwen2.5-32B-Instruct — still Qwen family
         if tokenizer.pad_token is None:
-            if "Qwen" in model_path:
+            if "Qwen" in model_path or "qwen" in model_path.lower():
                 tokenizer.pad_token = "<|fim_pad|>"
-            elif "Llama" in model_path:
+            elif "Llama" in model_path or "llama" in model_path.lower():
                 tokenizer.pad_token = "<|reserved_special_token_5|>"
             else:
                 tokenizer.pad_token_id = 0
@@ -557,7 +582,8 @@ def main() -> None:
 
             # ── extract embeddings ───────────────────────────────────────── #
             all_reps, _ = collect_step_embeddings(
-                model, tokenizer, df, target_layer, args.model_max_length
+                model, tokenizer, df, target_layer, args.model_max_length,
+                batch_size=args.batch_size,
             )
             logger.info(f"  Valid examples: {len(all_reps)}")
             if len(all_reps) < args.num_types:
