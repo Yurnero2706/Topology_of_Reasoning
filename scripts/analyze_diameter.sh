@@ -38,7 +38,7 @@ NUM_TYPES=200                            # paper default: K-means k=200
 
 # Which training dataset was used for each checkpoint.
 # Matches sft.sh: --train_file_path="simplescaling/s1K"
-DATASET_S1K="simplescaling/s1K"
+DATASET_S1K="simplescaling/s1K-1.1"
 
 # ---------------------------------------------------------------------------
 # 1.  Checkpoint paths — override via env var or edit here after training
