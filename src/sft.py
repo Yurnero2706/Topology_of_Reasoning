@@ -55,6 +55,36 @@ def train():
         # Use a token that is never used
         tokenizer.pad_token = "<|fim_pad|>"
 
+    # If the dataset was loaded raw (e.g. simplescaling/s1K instead of
+    # simplescaling/s1K_tokenized) it won't have a 'text' column.
+    # Format it using the model's chat template so SFTTrainer can proceed.
+    first_split = next(iter(dataset))
+    if "text" not in dataset[first_split].features:
+        logging.info("'text' column not found — applying chat template to format dataset.")
+
+        def _format(example):
+            if "messages" in example:
+                messages = example["messages"]
+            elif "question" in example and "solution" in example:
+                messages = [
+                    {"role": "user",      "content": example["question"]},
+                    {"role": "assistant", "content": example["solution"]},
+                ]
+            elif "question" in example and "answer" in example:
+                messages = [
+                    {"role": "user",      "content": example["question"]},
+                    {"role": "assistant", "content": example["answer"]},
+                ]
+            else:
+                raise ValueError(
+                    f"Cannot build 'text' field: dataset columns are {list(example.keys())}"
+                )
+            return {"text": tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=False
+            )}
+
+        dataset = dataset.map(_format, desc="Formatting dataset")
+
     # Only compute loss over assistant responses
     # Verified that it precisely starts where the thinking tokens start and ends with the first pad token
     # via labels being set to -100
