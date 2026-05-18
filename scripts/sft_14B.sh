@@ -70,6 +70,9 @@ ADAM_B2=0.95
 # ---------------------------------------------------------------------------
 GPU_COUNT=$(nvidia-smi -L | wc -l)
 
+# Allow the CUDA allocator to grow segments rather than fragment fixed-size pools
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 echo ""
 echo "======================================================"
 echo "  SFT: ${BASE_MODEL}"
@@ -114,7 +117,8 @@ torchrun \
     --save_only_model=True \
     --gradient_checkpointing=True \
     --fsdp="full_shard auto_wrap" \
-    --fsdp_config="train/fsdp_config_qwen.json" \
+    --fsdp_config="train/fsdp_config_qwen_cpu.json" \
+    --report_to="none" \
     --optim=adamw_bnb_8bit
 
 echo ""
