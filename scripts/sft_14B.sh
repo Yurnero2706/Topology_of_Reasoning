@@ -112,7 +112,10 @@ torchrun \
     --output_dir="${CKPT_DIR}" \
     --push_to_hub=False \
     --save_only_model=True \
-    --gradient_checkpointing=True
+    --gradient_checkpointing=True \
+    --fsdp="full_shard auto_wrap" \
+    --fsdp_config="train/fsdp_config_qwen.json" \
+    --optim=adamw_bnb_8bit
 
 echo ""
 echo "======================================================"
