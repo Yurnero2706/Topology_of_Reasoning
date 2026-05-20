@@ -27,7 +27,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 1.  Dataset selection
 # ---------------------------------------------------------------------------
-DATASET="${DATASET:-s1K-1.1}"          # "s1K"  →  v1.0 / "s1K-1.1"  →  v1.1
+DATASET="${DATASET:-s1K}"          # "s1K"  →  v1.0 / "s1K-1.1"  →  v1.1
 
 case "${DATASET}" in
     s1K)
@@ -47,7 +47,7 @@ esac
 # ---------------------------------------------------------------------------
 # 2.  Hyperparameters — kept identical to cluster_s1K.sh
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-7B"
+BASE_MODEL="Qwen/Qwen2.5-14B"
 
 LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
@@ -105,7 +105,7 @@ torchrun \
     --eval_strategy="no" \
     --logging_steps=1 \
     --save_strategy="steps" \
-    --save_steps=200 \
+    --save_steps=400 \
     --save_total_limit=20 \
     --lr_scheduler_type="cosine" \
     --learning_rate="${LR}" \
@@ -124,10 +124,8 @@ torchrun \
 echo ""
 echo "======================================================"
 echo "  Training complete."
-echo "  Checkpoints: ${CKPT_DIR}/checkpoint-200"
-echo "               ${CKPT_DIR}/checkpoint-400  (if training ran ≥400 steps)"
+echo "  Checkpoints: ${CKPT_DIR}/checkpoint-400"
 echo ""
 echo "  Next steps:"
-echo "    MODEL=${CKPT_DIR}/checkpoint-200 bash scripts/eval_14B.sh"
 echo "    MODEL=${CKPT_DIR}/checkpoint-400 bash scripts/eval_14B.sh"
 echo "======================================================"
