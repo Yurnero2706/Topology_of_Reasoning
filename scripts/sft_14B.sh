@@ -2,6 +2,8 @@
 #PBS -A UTSUROLB 
 #PBS -b 1
 #PBS -q gen_S
+VENV_PREFIX=/work/UTSUROLB/utlb_ngy/ngy/.venv
+source ${VENV_PREFIX}/bin/activate
 
 # =============================================================================
 # sft_14B.sh — SFT for Qwen2.5-14B  (Figure 9 reproduction)
