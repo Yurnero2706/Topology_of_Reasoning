@@ -1,4 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
+#PBS -A UTSUROLB 
+#PBS -b 1
+#PBS -q gen_S
+
 # =============================================================================
 # sft_14B.sh — SFT for Qwen2.5-14B  (Figure 9 reproduction)
 # =============================================================================
@@ -47,7 +51,7 @@ esac
 # ---------------------------------------------------------------------------
 # 2.  Hyperparameters — kept identical to cluster_s1K.sh
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-14B"
+BASE_MODEL="Qwen/Qwen2.5-32B-Instruct"   # Qwen/Qwen2.5-14B-Instruct  (was 3B in cluster_s1K.sh)
 
 LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
@@ -68,7 +72,7 @@ ADAM_B2=0.95
 # ---------------------------------------------------------------------------
 # 3.  Auto-detect GPU count (same logic as cluster_s1K.sh)
 # ---------------------------------------------------------------------------
-GPU_COUNT=$(nvidia-smi -L | wc -l)
+GPU_COUNT= 1  # $(nvidia-smi -L | wc -l) for multiple nodes
 
 # Allow the CUDA allocator to grow segments rather than fragment fixed-size pools
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -105,7 +109,7 @@ torchrun \
     --eval_strategy="no" \
     --logging_steps=1 \
     --save_strategy="steps" \
-    --save_steps=400 \
+    --save_steps=200 \
     --save_total_limit=20 \
     --lr_scheduler_type="cosine" \
     --learning_rate="${LR}" \
@@ -124,8 +128,8 @@ torchrun \
 echo ""
 echo "======================================================"
 echo "  Training complete."
-echo "  Checkpoints: ${CKPT_DIR}/checkpoint-400"
+echo "  Checkpoints: ${CKPT_DIR}/checkpoint-200"
 echo ""
 echo "  Next steps:"
-echo "    MODEL=${CKPT_DIR}/checkpoint-400 bash scripts/eval_14B.sh"
+echo "    MODEL=${CKPT_DIR}/checkpoint-200 bash scripts/eval_14B.sh"
 echo "======================================================"
