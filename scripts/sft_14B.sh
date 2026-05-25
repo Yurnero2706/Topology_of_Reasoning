@@ -76,9 +76,6 @@ ADAM_B2=0.95
 # ---------------------------------------------------------------------------
 GPU_COUNT=1  # $(nvidia-smi -L | wc -l) for multiple nodes
 
-# Allow the CUDA allocator to grow segments rather than fragment fixed-size pools
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-
 echo ""
 echo "======================================================"
 echo "  SFT: ${BASE_MODEL}"
