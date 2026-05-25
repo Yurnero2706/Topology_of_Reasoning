@@ -119,7 +119,7 @@ torchrun \
     --push_to_hub=False \
     --save_only_model=True \
     --fsdp="full_shard auto_wrap" \
-    --fsdp_config="train/fsdp_config_qwen_cpu.json"
+    --fsdp_config="/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning/src/train/fsdp_config_qwen_cpu.json"
     #--gradient_checkpointing=True
 
 echo ""
