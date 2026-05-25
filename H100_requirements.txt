@@ -1,7 +1,7 @@
 openai==1.56.1
-torch==2.0.0
-torchaudio==2.0.1
-torchvision==0.15.1
+torch==2.1.0
+torchaudio==2.1.0
+torchvision==0.16.0
 transformers==4.46.1
 wandb==0.17.3
 datasets==3.1.0
