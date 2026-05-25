@@ -1,8 +1,8 @@
 #!/bin/bash
 #PBS -A UTSUROLB 
 #PBS -b 1
-#PBS -q gen_S
-VENV_PREFIX=/work/UTSUROLB/utlb_ngy/ngy/.venv
+#PBS -q gpu
+VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
 source ${VENV_PREFIX}/bin/activate
 
 # =============================================================================
@@ -74,7 +74,7 @@ ADAM_B2=0.95
 # ---------------------------------------------------------------------------
 # 3.  Auto-detect GPU count (same logic as cluster_s1K.sh)
 # ---------------------------------------------------------------------------
-GPU_COUNT= 1  # $(nvidia-smi -L | wc -l) for multiple nodes
+GPU_COUNT=1  # $(nvidia-smi -L | wc -l) for multiple nodes
 
 # Allow the CUDA allocator to grow segments rather than fragment fixed-size pools
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -97,7 +97,7 @@ echo ""
 torchrun \
     --nproc-per-node "${GPU_COUNT}" \
     --master_port 12345 \
-    src/sft.py \
+    /work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning/src/sft.py \
     --block_size="${BLOCK_SIZE}" \
     --per_device_train_batch_size="${MICRO_BATCH}" \
     --per_device_eval_batch_size="${MICRO_BATCH}" \
@@ -121,11 +121,9 @@ torchrun \
     --output_dir="${CKPT_DIR}" \
     --push_to_hub=False \
     --save_only_model=True \
-    --gradient_checkpointing=True \
     --fsdp="full_shard auto_wrap" \
-    --fsdp_config="train/fsdp_config_qwen_cpu.json" \
-    --report_to="none" \
-    --optim=adamw_bnb_8bit
+    --fsdp_config="train/fsdp_config_qwen_cpu.json"
+    #--gradient_checkpointing=True
 
 echo ""
 echo "======================================================"
