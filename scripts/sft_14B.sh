@@ -53,7 +53,7 @@ esac
 # ---------------------------------------------------------------------------
 # 2.  Hyperparameters — kept identical to cluster_s1K.sh
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-32B-Instruct"   # Qwen/Qwen2.5-14B-Instruct  (was 3B in cluster_s1K.sh)
+BASE_MODEL="Qwen/Qwen2.5-14B"
 
 LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
@@ -118,9 +118,9 @@ torchrun \
     --output_dir="${CKPT_DIR}" \
     --push_to_hub=False \
     --save_only_model=True \
-    --fsdp="full_shard auto_wrap" \
-    --fsdp_config="/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning/train/fsdp_config_qwen_cpu.json"
-    #--gradient_checkpointing=True
+    --gradient_checkpointing=True \
+    --optim=adamw_bnb_8bit \
+    --report_to="none"
 
 echo ""
 echo "======================================================"
