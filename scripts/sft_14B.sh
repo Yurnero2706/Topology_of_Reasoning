@@ -59,7 +59,7 @@ MAX_STEPS="${MAX_STEPS:--1}"   # -1 = run full epochs; set 400 to stop early
 
 # block_size=10000 matches cluster_s1K.sh
 # (paper Table 3 lists 32768; change here if you want the paper-exact setting)
-BLOCK_SIZE=32768
+BLOCK_SIZE=10000
 
 WARMUP_RATIO=0.05
 ADAM_B1=0.9
