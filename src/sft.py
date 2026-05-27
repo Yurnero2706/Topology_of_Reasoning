@@ -105,19 +105,6 @@ def train():
         data_collator=collator
     )
 
-    # Accelerate sets mixed_precision_policy=bf16 on the FSDP plugin when
-    # --bf16=True, which causes it to upcast every shard from bf16 to fp32
-    # before prepare(). That doubles VRAM and defeats FSDP sharding on
-    # memory-constrained GPUs. The model is already in bf16 and --bf16=True
-    # still enables autocast for computation, so the fp32 master-weight copy
-    # is unnecessary here.
-    try:
-        plugin = trainer.accelerator.state.fsdp_plugin
-        if plugin is not None:
-            plugin.mixed_precision_policy = None
-    except AttributeError:
-        pass
-
     trainer.train()
     trainer.save_model(output_dir=args.output_dir)
     tokenizer.save_pretrained(args.output_dir)

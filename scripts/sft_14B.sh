@@ -59,7 +59,7 @@ MAX_STEPS="${MAX_STEPS:--1}"   # -1 = run full epochs; set 400 to stop early
 
 # block_size=10000 matches cluster_s1K.sh
 # (paper Table 3 lists 32768; change here if you want the paper-exact setting)
-BLOCK_SIZE=10000
+BLOCK_SIZE=32768
 
 WARMUP_RATIO=0.05
 ADAM_B1=0.9
@@ -112,10 +112,8 @@ torchrun \
     --output_dir="${CKPT_DIR}" \
     --push_to_hub=False \
     --save_only_model=True \
-    --fsdp="full_shard auto_wrap" \
-    --fsdp_config="train/fsdp_config_qwen_cpu.json" \
     --gradient_checkpointing=True \
-    --optim=adamw_bnb_8bit \
+    --deepspeed scripts/ds_zero3.json \
     --report_to="none"
 
 echo ""
