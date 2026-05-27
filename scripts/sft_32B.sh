@@ -1,4 +1,10 @@
 #!/bin/bash
+#PBS -A UTSUROLB 
+#PBS -b 1
+#PBS -q gpu
+VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
+source ${VENV_PREFIX}/bin/activate
+
 # =============================================================================
 # sft_14B.sh — SFT for Qwen2.5-14B  (Figure 9 reproduction)
 # =============================================================================
@@ -68,7 +74,7 @@ ADAM_B2=0.95
 # ---------------------------------------------------------------------------
 # 3.  Auto-detect GPU count (same logic as cluster_s1K.sh)
 # ---------------------------------------------------------------------------
-GPU_COUNT=$(nvidia-smi -L | wc -l)  # for multiple nodes
+GPU_COUNT=1  # $(nvidia-smi -L | wc -l) for multiple nodes
 
 echo ""
 echo "======================================================"
@@ -88,7 +94,7 @@ echo ""
 torchrun \
     --nproc-per-node "${GPU_COUNT}" \
     --master_port 12345 \
-    src/sft.py \
+    /work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning/src/sft.py \
     --block_size="${BLOCK_SIZE}" \
     --per_device_train_batch_size="${MICRO_BATCH}" \
     --per_device_eval_batch_size="${MICRO_BATCH}" \
