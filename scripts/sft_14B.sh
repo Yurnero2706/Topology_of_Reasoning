@@ -47,7 +47,7 @@ esac
 # ---------------------------------------------------------------------------
 # 2.  Hyperparameters — kept identical to cluster_s1K.sh
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-14B-Instruct"
+BASE_MODEL="Qwen/Qwen2.5-7B"
 
 LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
