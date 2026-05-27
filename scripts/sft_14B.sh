@@ -47,7 +47,7 @@ esac
 # ---------------------------------------------------------------------------
 # 2.  Hyperparameters — kept identical to cluster_s1K.sh
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-14B"
+BASE_MODEL="Qwen/Qwen2.5-14B-Instruct"
 
 LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
@@ -59,7 +59,7 @@ MAX_STEPS="${MAX_STEPS:--1}"   # -1 = run full epochs; set 400 to stop early
 
 # block_size=10000 matches cluster_s1K.sh
 # (paper Table 3 lists 32768; change here if you want the paper-exact setting)
-BLOCK_SIZE=10000
+BLOCK_SIZE=32768
 
 WARMUP_RATIO=0.05
 ADAM_B1=0.9
