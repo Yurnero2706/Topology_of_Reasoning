@@ -78,7 +78,7 @@ echo "  Output dir : ${CKPT_DIR}"
 echo "  GPUs       : ${GPU_COUNT}"
 echo "  Block size : ${BLOCK_SIZE}"
 echo "  Epochs     : ${EPOCHS}   max_steps=${MAX_STEPS}"
-echo "  Saves at   : every 200 steps  (→ checkpoint-200, checkpoint-400, …)"
+echo "  Saves at   : every 400 steps  (→ checkpoint-400, checkpoint-800, …)"
 echo "======================================================"
 echo ""
 
@@ -102,7 +102,7 @@ torchrun \
     --eval_strategy="no" \
     --logging_steps=1 \
     --save_strategy="steps" \
-    --save_steps=200 \
+    --save_steps=400 \
     --save_total_limit=20 \
     --lr_scheduler_type="cosine" \
     --learning_rate="${LR}" \
@@ -121,8 +121,8 @@ torchrun \
 echo ""
 echo "======================================================"
 echo "  Training complete."
-echo "  Checkpoints: ${CKPT_DIR}/checkpoint-200"
+echo "  Checkpoints: ${CKPT_DIR}/checkpoint-400"
 echo ""
 echo "  Next steps:"
-echo "    MODEL=${CKPT_DIR}/checkpoint-200 bash scripts/eval_14B.sh"
+echo "    MODEL=${CKPT_DIR}/checkpoint-400 bash scripts/eval_14B.sh"
 echo "======================================================"
