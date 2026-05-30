@@ -1,7 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cu118
 openai==1.56.1
-torch==2.1.0
-torchaudio==2.1.0
-torchvision==0.16.0
+torch==2.1.0+cu118
+torchaudio==2.1.0+cu118
+torchvision==0.16.0+cu118
 transformers==4.46.1
 wandb==0.17.3
 datasets==3.1.0
@@ -14,4 +15,6 @@ trl==0.12.0
 bitsandbytes==0.41.3
 peft==0.17.1
 matplotlib==3.9.4
+numpy<2
+deepspeed==0.12.6
 
