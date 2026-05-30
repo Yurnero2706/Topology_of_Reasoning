@@ -120,7 +120,7 @@ torchrun \
     --push_to_hub=False \
     --save_only_model=True \
     --gradient_checkpointing=True \
-    --optim=paged_adamw_4bit \
+    --optim=paged_adamw_8bit \
     --report_to="none"
 
 echo ""
