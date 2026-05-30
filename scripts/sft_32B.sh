@@ -1,7 +1,8 @@
 #!/bin/bash
 #PBS -A UTSUROLB
-#PBS -b 1
+#PBS -b 2
 #PBS -q gpu
+#PBS -l elapstim_req=01:00:00
 VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
 source ${VENV_PREFIX}/bin/activate
 
@@ -30,10 +31,6 @@ source ${VENV_PREFIX}/bin/activate
 # =============================================================================
 set -euo pipefail
 module load cuda/11.8 2>/dev/null || true
-
-# Expandable segments lets the CUDA allocator grow/shrink segments on demand,
-# avoiding the fragmentation that causes spurious OOMs at the end of a step.
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # ---------------------------------------------------------------------------
 # 1.  Dataset selection
@@ -68,8 +65,6 @@ MICRO_BATCH=1         # effective batch = GPU_COUNT * MICRO_BATCH * GRAD_ACCUM
 GRAD_ACCUM=1
 MAX_STEPS="${MAX_STEPS:--1}"   # -1 = run full epochs; set 400 to stop early
 
-# block_size=10000 matches cluster_s1K.sh
-# (paper Table 3 lists 32768; change here if you want the paper-exact setting)
 BLOCK_SIZE=32768
 
 WARMUP_RATIO=0.05
@@ -77,9 +72,9 @@ ADAM_B1=0.9
 ADAM_B2=0.95
 
 # ---------------------------------------------------------------------------
-# 3.  Auto-detect GPU count (same logic as cluster_s1K.sh)
+# 3.  Auto-detect GPU count
 # ---------------------------------------------------------------------------
-GPU_COUNT=1  # $(nvidia-smi -L | wc -l) for multiple nodes
+GPU_COUNT=$(nvidia-smi -L | wc -l)
 
 echo ""
 echo "======================================================"
@@ -124,7 +119,9 @@ torchrun \
     --push_to_hub=False \
     --save_only_model=True \
     --gradient_checkpointing=True \
-    --optim=paged_adamw_8bit \
+    --optim=adamw_bnb_8bit \
+    --fsdp="full_shard auto_wrap" \
+    --fsdp_config="train/fsdp_config_qwen_cpu.json" \
     --report_to="none"
 
 echo ""
