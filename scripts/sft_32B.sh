@@ -120,6 +120,7 @@ torchrun \
     --push_to_hub=False \
     --save_only_model=True \
     --gradient_checkpointing=True \
+    --gradient_accumulation_steps=2
     --optim=paged_adamw_8bit \
     --report_to="none"
 
