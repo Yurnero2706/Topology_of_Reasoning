@@ -53,7 +53,7 @@ case "${DATASET}" in
 esac
 
 # ---------------------------------------------------------------------------
-# 2.  Hyperparameters — kept identical to cluster_s1K.sh
+# 2.  Hyperparameters
 # ---------------------------------------------------------------------------
 BASE_MODEL="Qwen/Qwen2.5-14B"
 
@@ -61,74 +61,124 @@ LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
 EPOCHS=5
 WEIGHT_DECAY=1e-4
-MICRO_BATCH=1         # effective batch = GPU_COUNT * MICRO_BATCH * GRAD_ACCUM
+MICRO_BATCH=1
 GRAD_ACCUM=1
-MAX_STEPS="${MAX_STEPS:--1}"   # -1 = run full epochs; set 400 to stop early
-
+MAX_STEPS="${MAX_STEPS:--1}"
 BLOCK_SIZE=32768
-
 WARMUP_RATIO=0.05
 ADAM_B1=0.9
 ADAM_B2=0.95
 
 # ---------------------------------------------------------------------------
-# 3.  Auto-detect GPU count
+# 3.  Multi-node setup from PBS_NODEFILE
 # ---------------------------------------------------------------------------
-GPU_COUNT=$(nvidia-smi -L | wc -l)
+NODES=($(sort -u $PBS_NODEFILE))
+MASTER_ADDR="${NODES[0]}"
+NNODES="${#NODES[@]}"
+GPUS_PER_NODE=$(nvidia-smi -L | wc -l)
+WORK_DIR=/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning
 
 echo ""
 echo "======================================================"
 echo "  SFT: ${BASE_MODEL}"
 echo "  Dataset    : ${DATASET} (${TRAIN_FILE_PATH})"
 echo "  Output dir : ${CKPT_DIR}"
-echo "  GPUs       : ${GPU_COUNT}"
+echo "  Nodes      : ${NNODES}  (${NODES[*]})"
+echo "  Master     : ${MASTER_ADDR}"
+echo "  GPUs/node  : ${GPUS_PER_NODE}"
 echo "  Block size : ${BLOCK_SIZE}"
 echo "  Epochs     : ${EPOCHS}   max_steps=${MAX_STEPS}"
-echo "  Saves at   : every 200 steps  (→ checkpoint-200, checkpoint-400, …)"
 echo "======================================================"
 echo ""
 
 # ---------------------------------------------------------------------------
-# 4.  Launch training
+# 4.  Launch torchrun on worker nodes via SSH (background)
 # ---------------------------------------------------------------------------
+for i in $(seq 1 $((NNODES - 1))); do
+    ssh -o StrictHostKeyChecking=no "${NODES[$i]}" bash << REMOTE &
+source ${VENV_PREFIX}/bin/activate
+module load cuda/11.8 2>/dev/null || true
 torchrun \
-    --nproc-per-node "${GPU_COUNT}" \
-    --master_port 12345 \
-    /work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning/src/sft.py \
-    --block_size="${BLOCK_SIZE}" \
-    --per_device_train_batch_size="${MICRO_BATCH}" \
-    --per_device_eval_batch_size="${MICRO_BATCH}" \
-    --gradient_accumulation_steps="${GRAD_ACCUM}" \
-    --num_train_epochs="${EPOCHS}" \
-    --max_steps="${MAX_STEPS}" \
-    --train_file_path="${TRAIN_FILE_PATH}" \
-    --model_name="${BASE_MODEL}" \
-    --warmup_ratio="${WARMUP_RATIO}" \
+    --nnodes=${NNODES} \
+    --nproc-per-node=${GPUS_PER_NODE} \
+    --node_rank=${i} \
+    --master_addr=${MASTER_ADDR} \
+    --master_port=12345 \
+    ${WORK_DIR}/src/sft.py \
+    --block_size=${BLOCK_SIZE} \
+    --per_device_train_batch_size=${MICRO_BATCH} \
+    --per_device_eval_batch_size=${MICRO_BATCH} \
+    --gradient_accumulation_steps=${GRAD_ACCUM} \
+    --num_train_epochs=${EPOCHS} \
+    --max_steps=${MAX_STEPS} \
+    --train_file_path=${TRAIN_FILE_PATH} \
+    --model_name=${BASE_MODEL} \
+    --warmup_ratio=${WARMUP_RATIO} \
     --bf16=True \
-    --eval_strategy="no" \
+    --eval_strategy=no \
     --logging_steps=1 \
-    --save_strategy="steps" \
+    --save_strategy=steps \
     --save_steps=200 \
     --save_total_limit=20 \
-    --lr_scheduler_type="cosine" \
-    --learning_rate="${LR}" \
-    --weight_decay="${WEIGHT_DECAY}" \
-    --adam_beta1="${ADAM_B1}" \
-    --adam_beta2="${ADAM_B2}" \
-    --output_dir="${CKPT_DIR}" \
+    --lr_scheduler_type=cosine \
+    --learning_rate=${LR} \
+    --weight_decay=${WEIGHT_DECAY} \
+    --adam_beta1=${ADAM_B1} \
+    --adam_beta2=${ADAM_B2} \
+    --output_dir=${CKPT_DIR} \
     --push_to_hub=False \
     --save_only_model=True \
     --gradient_checkpointing=True \
     --optim=adamw_bnb_8bit \
     --fsdp="full_shard auto_wrap" \
-    --fsdp_config="train/fsdp_config_qwen_cpu.json" \
-    --report_to="none"
+    --fsdp_config=${WORK_DIR}/train/fsdp_config_qwen_cpu.json \
+    --report_to=none
+REMOTE
+done
+
+# ---------------------------------------------------------------------------
+# 5.  Launch torchrun on master node (rank 0) — foreground
+# ---------------------------------------------------------------------------
+torchrun \
+    --nnodes=${NNODES} \
+    --nproc-per-node=${GPUS_PER_NODE} \
+    --node_rank=0 \
+    --master_addr=${MASTER_ADDR} \
+    --master_port=12345 \
+    ${WORK_DIR}/src/sft.py \
+    --block_size=${BLOCK_SIZE} \
+    --per_device_train_batch_size=${MICRO_BATCH} \
+    --per_device_eval_batch_size=${MICRO_BATCH} \
+    --gradient_accumulation_steps=${GRAD_ACCUM} \
+    --num_train_epochs=${EPOCHS} \
+    --max_steps=${MAX_STEPS} \
+    --train_file_path=${TRAIN_FILE_PATH} \
+    --model_name=${BASE_MODEL} \
+    --warmup_ratio=${WARMUP_RATIO} \
+    --bf16=True \
+    --eval_strategy=no \
+    --logging_steps=1 \
+    --save_strategy=steps \
+    --save_steps=200 \
+    --save_total_limit=20 \
+    --lr_scheduler_type=cosine \
+    --learning_rate=${LR} \
+    --weight_decay=${WEIGHT_DECAY} \
+    --adam_beta1=${ADAM_B1} \
+    --adam_beta2=${ADAM_B2} \
+    --output_dir=${CKPT_DIR} \
+    --push_to_hub=False \
+    --save_only_model=True \
+    --gradient_checkpointing=True \
+    --optim=adamw_bnb_8bit \
+    --fsdp="full_shard auto_wrap" \
+    --fsdp_config=${WORK_DIR}/train/fsdp_config_qwen_cpu.json \
+    --report_to=none
+
+wait
 
 echo ""
 echo "======================================================"
 echo "  Training complete."
 echo "  Checkpoints: ${CKPT_DIR}/checkpoint-200"
-echo ""
-echo "  Next steps:"
-echo "    MODEL=${CKPT_DIR}/checkpoint-200 bash scripts/eval_14B.sh"
 echo "======================================================"
