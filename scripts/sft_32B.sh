@@ -29,6 +29,7 @@ source ${VENV_PREFIX}/bin/activate
 # evaluate, then scripts/cluster_figure9.sh to produce Figure 9.
 # =============================================================================
 set -euo pipefail
+module load cuda/11.8 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # 1.  Dataset selection
