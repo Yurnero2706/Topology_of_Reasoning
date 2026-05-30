@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -A UTSUROLB 
+#PBS -A UTSUROLB
 #PBS -b 1
 #PBS -q gpu
 VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
@@ -30,6 +30,10 @@ source ${VENV_PREFIX}/bin/activate
 # =============================================================================
 set -euo pipefail
 module load cuda/11.8 2>/dev/null || true
+
+# Expandable segments lets the CUDA allocator grow/shrink segments on demand,
+# avoiding the fragmentation that causes spurious OOMs at the end of a step.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # ---------------------------------------------------------------------------
 # 1.  Dataset selection
@@ -120,7 +124,6 @@ torchrun \
     --push_to_hub=False \
     --save_only_model=True \
     --gradient_checkpointing=True \
-    --gradient_accumulation_steps=2 \
     --optim=paged_adamw_8bit \
     --report_to="none"
 
