@@ -38,7 +38,8 @@ def train():
         # Without this, a 14B model defaults to float32 (~58 GB) and OOMs
         # immediately on a 48 GB GPU before any sharding can help.
         _dtype = "bfloat16" if getattr(args, "bf16", False) else None
-        _kw = {"torch_dtype": _dtype, "use_cache": False} if _dtype else {}
+        _kw = {"torch_dtype": _dtype, "use_cache": False,
+               "attn_implementation": "flash_attention_2"} if _dtype else {}
         model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name, **_kw)
 
     dataset = load_dataset(config.train_file_path)

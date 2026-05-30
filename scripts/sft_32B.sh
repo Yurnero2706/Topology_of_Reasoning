@@ -119,7 +119,7 @@ torchrun \
     --push_to_hub=False \
     --save_only_model=True \
     --gradient_checkpointing=True \
-    --optim=adamw_bnb_8bit \
+    --deepspeed scripts/ds_zero3.json \
     --report_to="none"
 
 echo ""
