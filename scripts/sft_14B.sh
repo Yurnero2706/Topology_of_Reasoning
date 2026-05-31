@@ -24,10 +24,11 @@
 # =============================================================================
 set -euo pipefail
 
+
 # ---------------------------------------------------------------------------
 # 1.  Dataset selection
 # ---------------------------------------------------------------------------
-DATASET="${DATASET:-s1K}"          # "s1K"  →  v1.0 / "s1K-1.1"  →  v1.1
+DATASET="${DATASET:-s1K-1.1}"          # "s1K"  →  v1.0 / "s1K-1.1"  →  v1.1
 
 case "${DATASET}" in
     s1K)
@@ -47,7 +48,7 @@ esac
 # ---------------------------------------------------------------------------
 # 2.  Hyperparameters — kept identical to cluster_s1K.sh
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-7B"
+BASE_MODEL="Qwen/Qwen2.5-14B"
 
 LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
@@ -56,7 +57,7 @@ WEIGHT_DECAY=1e-4
 MICRO_BATCH=1         # effective batch = GPU_COUNT * MICRO_BATCH * GRAD_ACCUM
 GRAD_ACCUM=1
 MAX_STEPS="${MAX_STEPS:--1}"   # -1 = run full epochs; set 400 to stop early
-
+STEPS=200
 # block_size=10000 matches cluster_s1K.sh
 # (paper Table 3 lists 32768; change here if you want the paper-exact setting)
 BLOCK_SIZE=32768
@@ -78,7 +79,7 @@ echo "  Output dir : ${CKPT_DIR}"
 echo "  GPUs       : ${GPU_COUNT}"
 echo "  Block size : ${BLOCK_SIZE}"
 echo "  Epochs     : ${EPOCHS}   max_steps=${MAX_STEPS}"
-echo "  Saves at   : every 400 steps  (→ checkpoint-400, checkpoint-800, …)"
+echo "  Saves at   : every ${STEPS} steps  (→ checkpoint-${STEPS}, checkpoint-$((2 * STEPS)), …)"
 echo "======================================================"
 echo ""
 
@@ -102,7 +103,7 @@ torchrun \
     --eval_strategy="no" \
     --logging_steps=1 \
     --save_strategy="steps" \
-    --save_steps=400 \
+    --save_steps="${STEPS}" \
     --save_total_limit=20 \
     --lr_scheduler_type="cosine" \
     --learning_rate="${LR}" \
@@ -112,17 +113,15 @@ torchrun \
     --output_dir="${CKPT_DIR}" \
     --push_to_hub=False \
     --save_only_model=True \
-    --fsdp="full_shard auto_wrap" \
-    --fsdp_config="train/fsdp_config_qwen_cpu.json" \
     --gradient_checkpointing=True \
-    --optim=adamw_bnb_8bit \
+    --deepspeed scripts/ds_zero3.json \
     --report_to="none"
 
 echo ""
 echo "======================================================"
 echo "  Training complete."
-echo "  Checkpoints: ${CKPT_DIR}/checkpoint-400"
+echo "  Checkpoints: ${CKPT_DIR}/checkpoint-${STEPS}"
 echo ""
 echo "  Next steps:"
-echo "    MODEL=${CKPT_DIR}/checkpoint-400 bash scripts/eval_14B.sh"
+echo "    MODEL=${CKPT_DIR}/checkpoint-${STEPS} bash scripts/eval_14B.sh"
 echo "======================================================"
