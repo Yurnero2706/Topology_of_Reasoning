@@ -53,7 +53,7 @@ CKPT_S1_V11="${CKPT_S1_V11:-ckpts/s1-v1.1}"   # trained on s1K-v1.1 (v1.1 data)
 # 2.  Analysis settings
 # ---------------------------------------------------------------------------
 TARGET_LAYER_RATIOS="0.1 0.3 0.5 0.7 0.9"     # paper: 5 depths
-OUTPUT_DIR="results_diameter/{$DATASET_S1K}/steps-{$NUM_TYPES}/"  # e.g. results_diameter/s1K-1.1/Steps-{200}/
+OUTPUT_DIR="results_diameter/${DATASET_S1K}/steps-${NUM_TYPES}/"  # e.g. results_diameter/s1K-1.1/Steps-{200}/
 CACHE_DIR="${HF_HOME:-${HOME}/.cache/huggingface}"
 
 # ---------------------------------------------------------------------------
