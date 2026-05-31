@@ -30,7 +30,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0.  Shared hyper-parameters — kept in sync with sft.sh
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-14B"  # Table 3: Base Model = Qwen2.5-14B
+BASE_MODEL="${BASE_MODEL:-Qwen/Qwen2.5-7B}"  # Table 3: Base Model = Qwen2.5-7B
 BLOCK_SIZE=32768                         # Table 3: Block Size = 32768 tokens
 BATCH_SIZE=8                             # Table 3: Batch Size = 8 (8 GPUs × micro-batch 1)
 TORCH_DTYPE="bfloat16"                   # Table 3: Precision = bf16
@@ -75,7 +75,7 @@ fi
 #     (skip checkpoint entries whose directory doesn't exist yet)
 # ---------------------------------------------------------------------------
 MODEL_PATHS="${BASE_MODEL}"
-MODEL_LABELS="Base(Qwen2.5-14B)"
+MODEL_LABELS="Base(${BASE_MODEL})"
 
 if [[ -d "${CKPT_S1_V10}" ]]; then
     MODEL_PATHS="${MODEL_PATHS} ${CKPT_S1_V10}"
@@ -162,4 +162,4 @@ echo "============================================================"
 #   bash sft.sh
 #
 # Then re-run:
-#   CKPT_S1_V10=ckpts/s1-v1.0  CKPT_S1_V11=ckpts/s1-v1.1  bash analyze_diameter.sh
+#   CKPT_S1_V10=ckpts/s1-v1.0  CKPT_S1_V11=ckpts/s1-v1.1  bash scripts/analyze_diameter.sh
