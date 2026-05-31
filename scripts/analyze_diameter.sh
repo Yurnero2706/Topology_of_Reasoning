@@ -34,7 +34,7 @@ BASE_MODEL="Qwen/Qwen2.5-14B"  # Table 3: Base Model = Qwen2.5-14B
 BLOCK_SIZE=32768                         # Table 3: Block Size = 32768 tokens
 BATCH_SIZE=8                             # Table 3: Batch Size = 8 (8 GPUs × micro-batch 1)
 TORCH_DTYPE="bfloat16"                   # Table 3: Precision = bf16
-NUM_TYPES=200                            # paper default: K-means k=200
+NUM_TYPES=400                            # paper default: K-means k=200
 
 # Which training dataset was used for each checkpoint.
 # Matches sft.sh: --train_file_path="simplescaling/s1K"
@@ -60,11 +60,11 @@ CACHE_DIR="${HF_HOME:-${HOME}/.cache/huggingface}"
 # 3.  Smoke-test mode — fewer samples / ratios / clusters
 # ---------------------------------------------------------------------------
 if [[ "${SMOKE_TEST:-0}" == "1" ]]; then
-    echo "[SMOKE-TEST MODE]  max_samples=5, ratio=0.9, num_types=50, max_len=2048"
+    echo "[SMOKE-TEST MODE]  max_samples=5, ratio=0.9, num_types=50, max_len=32768"
     MAX_SAMPLES="--max_samples 5"
     TARGET_LAYER_RATIOS="0.9"
     NUM_TYPES=50
-    BLOCK_SIZE=2048           # reduced from 32768 just for the smoke-test
+    BLOCK_SIZE=32768           # reduced from 32768 just for the smoke-test
     OUTPUT_DIR="results_diameter_smoke"
 else
     MAX_SAMPLES=""
@@ -113,6 +113,7 @@ echo "  Layers   : ${TARGET_LAYER_RATIOS}"
 echo "  k-means k: ${NUM_TYPES}"
 echo "  Max-len  : ${BLOCK_SIZE}"
 echo "  Out dir  : ${OUTPUT_DIR}"
+echo "  Steps    : ${NUM_TYPES}"
 echo "============================================================"
 echo ""
 
