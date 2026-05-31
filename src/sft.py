@@ -38,8 +38,13 @@ def train():
         # Without this, a 14B model defaults to float32 (~58 GB) and OOMs
         # immediately on a 48 GB GPU before any sharding can help.
         _dtype = "bfloat16" if getattr(args, "bf16", False) else None
+        # low_cpu_mem_usage=True: under FSDP there is no construction-time param
+        # partitioning (unlike DeepSpeed ZeRO-3's zero.Init), so without this each
+        # rank materializes the full bf16 model in CPU RAM (~2x peak), OOM-killing
+        # the host. This also lets cpu_ram_efficient_loading in the FSDP config engage.
         _kw = {"torch_dtype": _dtype, "use_cache": False,
-               "attn_implementation": "sdpa"} if _dtype else {}
+               "attn_implementation": "sdpa",
+               "low_cpu_mem_usage": True} if _dtype else {}
         model = transformers.AutoModelForCausalLM.from_pretrained(config.model_name, **_kw)
 
     dataset = load_dataset(config.train_file_path)
