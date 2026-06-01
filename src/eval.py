@@ -204,7 +204,19 @@ def main():
             print("--------------------")
                     
         else:
-            x_text = [GSMK_QUERY_TEMPLATE.format(Question=x) for x in x_text]
+            # The SFT model was trained on Qwen chat-formatted data
+            # (sft.py applies tokenizer.apply_chat_template). We must wrap the
+            # prompt the same way at inference, otherwise the model sees an
+            # out-of-distribution prompt and never enters "assistant" mode.
+            x_text = [
+                tokenizer.apply_chat_template(
+                    [{"role": "user",
+                      "content": GSMK_QUERY_TEMPLATE.format(Question=x)}],
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                for x in x_text
+            ]
             print("\n---x_text---")
             print(x_text)
             print("--------------------")
@@ -218,7 +230,7 @@ def main():
                 max_tokens=max_length,
                 temperature=0.6,
                 top_p=0.95,
-                repetition_penalty=1.4,
+                repetition_penalty=1.0,   # 1.4 was far too high → degenerate / language-switch output
             )
             with torch.no_grad():
                 generated_outputs = model.generate(x_text, sampling_params=sampling_params)
