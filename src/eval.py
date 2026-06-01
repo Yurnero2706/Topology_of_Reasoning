@@ -95,9 +95,12 @@ def main():
         quantization_config = transformers.BitsAndBytesConfig(
             llm_int8_enable_fp32_cpu_offload=model_args.enable_cpu_offload)
 
+        # Qwen2.5 must run in bf16: its activation magnitudes overflow fp16
+        # (>65504 → inf/NaN), which collapses generation into a single
+        # repeated token. The model was also trained in bf16 (sft.py --bf16).
         model = LLM(model=model_args.model_name_or_path,
                     max_model_len=model_args.max_length,
-                    dtype=torch.float16,
+                    dtype=torch.bfloat16,
                     )
         
     print("loaded model.")
