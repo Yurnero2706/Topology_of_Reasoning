@@ -306,6 +306,11 @@ METRICS_TO_PLOT = [
 ]
 
 
+# Seaborn "muted"-style palette so the figure matches the paper's Figure 9
+# look even without seaborn installed.
+_VIOLIN_PALETTE = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3"]
+
+
 def plot_metric_comparison(
     results_per_model: Dict[str, Dict[float, List[Dict]]],
     output_dir: Path,
@@ -313,55 +318,66 @@ def plot_metric_comparison(
     metric_label: str  = "Diameter",
 ) -> None:
     """
-    Box-plot of <metric_key> distributions across layer ratios, with a
-    mean-value line overlay — mirrors the style of Appendix J in the paper.
+    Violin-plot of <metric_key> distributions across layer ratios — mirrors
+    the style of Figure 9 / Appendix J in the paper.
+
+    Each violin shows the full distribution for one model at one layer ratio.
+    A thin vertical stick marks the central 5–95 % range and a red dash marks
+    the mean (the point estimate the paper annotates).
     """
     model_labels = list(results_per_model.keys())
     ratios       = sorted(next(iter(results_per_model.values())).keys())
     n_models     = len(model_labels)
 
-    cmap    = plt.cm.tab10
-    colors  = [cmap(i / max(n_models - 1, 1)) for i in range(n_models)]
-
     fig, ax = plt.subplots(figsize=(10, 5))
 
     x_pos   = np.arange(len(ratios))
-    width   = 0.75 / n_models
-    offsets = np.linspace(
-        -(n_models - 1) / 2,
-         (n_models - 1) / 2,
-         n_models,
-    ) * width
+    width   = 0.8 / max(n_models, 1)
+    offsets = (np.arange(n_models) - (n_models - 1) / 2) * width
+
+    import matplotlib.patches as mpatches
+    legend_handles = []
 
     for m_idx, label in enumerate(model_labels):
-        color = colors[m_idx]
+        color = _VIOLIN_PALETTE[m_idx % len(_VIOLIN_PALETTE)]
         layer_data = results_per_model[label]
-        # list-of-lists: one inner list per layer ratio
-        values = [
-            [r[metric_key] for r in layer_data.get(ratio, [])]
-            for ratio in ratios
-        ]
-        means = [np.mean(v) if v else 0.0 for v in values]
 
-        bp = ax.boxplot(
-            values,
-            positions   = x_pos + offsets[m_idx],
-            widths      = width * 0.85,
-            patch_artist= True,
-            boxprops    = dict(facecolor=(*color[:3], 0.25), color=color, linewidth=1.2),
-            medianprops = dict(color=color, linewidth=2),
-            whiskerprops= dict(color=color, linewidth=1.2),
-            capprops    = dict(color=color, linewidth=1.2),
-            flierprops  = dict(
-                marker="o", markerfacecolor=color,
-                markeredgecolor=color, alpha=0.3, markersize=3,
-            ),
-            manage_ticks= False,
+        positions, datasets, means = [], [], []
+        for r_idx, ratio in enumerate(ratios):
+            vals = [r[metric_key] for r in layer_data.get(ratio, [])]
+            if not vals:
+                continue
+            positions.append(x_pos[r_idx] + offsets[m_idx])
+            datasets.append(np.asarray(vals, dtype=float))
+            means.append(float(np.mean(vals)))
+
+        if not datasets:
+            continue
+
+        parts = ax.violinplot(
+            datasets,
+            positions  = positions,
+            widths     = width * 0.9,
+            showmeans  = False,
+            showmedians= False,
+            showextrema= False,
         )
-        ax.plot(
-            x_pos + offsets[m_idx], means,
-            "o-", color=color, label=label,
-            linewidth=2, markersize=6, zorder=5,
+        for body in parts["bodies"]:
+            body.set_facecolor(color)
+            body.set_edgecolor(color)
+            body.set_alpha(0.55)
+            body.set_linewidth(1.0)
+
+        for pos, vals, mean in zip(positions, datasets, means):
+            lo, hi = np.percentile(vals, [5, 95])
+            ax.plot([pos, pos], [lo, hi], color="0.25", linewidth=1.0, zorder=3)
+            ax.plot(
+                [pos - width * 0.28, pos + width * 0.28], [mean, mean],
+                color="#B22222", linewidth=2.0, zorder=4,
+            )
+
+        legend_handles.append(
+            mpatches.Patch(facecolor=color, edgecolor=color, alpha=0.55, label=label)
         )
 
     ax.set_xticks(x_pos)
@@ -372,8 +388,8 @@ def plot_metric_comparison(
         f"{metric_label} Distribution across Hidden Layers",
         fontsize=13,
     )
-    ax.legend(fontsize=11, loc="upper left")
-    ax.grid(True, linestyle="--", alpha=0.35)
+    ax.legend(handles=legend_handles, fontsize=11, loc="upper left")
+    ax.grid(True, axis="y", linestyle="--", alpha=0.3)
     plt.tight_layout()
 
     out_path = output_dir / f"{metric_key}_comparison.png"
