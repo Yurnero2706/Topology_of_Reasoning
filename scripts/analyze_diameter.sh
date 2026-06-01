@@ -34,7 +34,7 @@ BASE_MODEL="${BASE_MODEL:-Qwen/Qwen2.5-7B}"  # Table 3: Base Model = Qwen2.5-7B
 BLOCK_SIZE=32768                         # Table 3: Block Size = 32768 tokens
 BATCH_SIZE=8                             # Table 3: Batch Size = 8 (8 GPUs × micro-batch 1)
 TORCH_DTYPE="bfloat16"                   # Table 3: Precision = bf16
-NUM_TYPES=400                            # paper default: K-means k=400
+NUM_TYPES=200                            # paper default: K-means k=400
 
 # Which training dataset was used for each checkpoint.
 # Matches sft.sh: --train_file_path="simplescaling/s1K"
