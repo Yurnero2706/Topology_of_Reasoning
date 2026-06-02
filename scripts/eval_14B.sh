@@ -27,8 +27,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 1.  Configuration
 # ---------------------------------------------------------------------------
-# MODEL="${MODEL:-ckpts/s1-v1.0}"
-MODEL="${MODEL:-Qwen/Qwen2.5-7B}"
+MODEL="${MODEL:-ckpts/s1-v1.0}"
 DATASET="${DATASET:-gsm8k}"    # aime | math_500 | gsm8k | simplescaling/s1K
 
 # Match eval.sh defaults exactly

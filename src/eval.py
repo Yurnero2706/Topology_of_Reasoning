@@ -229,11 +229,20 @@ def main():
             encoding = tokenizer(x_text, padding=True, return_tensors='pt').to(device)
             # max_length = min(model_args.max_length, encoding['input_ids'].size(1) + 512)
             max_length = model_args.max_length
+            # Stop at the chat-turn terminator. The Qwen2.5 *base* model's eos
+            # is <|endoftext|>, but the SFT model was trained to end its turn
+            # with <|im_end|>. Without adding it as a stop token, vLLM rolls
+            # past it and the model re-emits the answer until max_tokens.
+            stop_ids = [tokenizer.eos_token_id]
+            im_end_id = tokenizer.convert_tokens_to_ids("<|im_end|>")
+            if isinstance(im_end_id, int) and im_end_id >= 0:
+                stop_ids.append(im_end_id)
             sampling_params = SamplingParams(
                 max_tokens=max_length,
                 temperature=0.6,
                 top_p=0.95,
                 repetition_penalty=1.0,   # 1.4 was far too high → degenerate / language-switch output
+                stop_token_ids=stop_ids,
             )
             with torch.no_grad():
                 generated_outputs = model.generate(x_text, sampling_params=sampling_params)
