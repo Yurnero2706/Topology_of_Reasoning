@@ -2,6 +2,8 @@
 #PBS -A UTSUROLB
 #PBS -b 16
 #PBS -q gpu
+#PBS -T openmpi
+#PBS -v NQSV_MPI_VER=4.1.6/gcc11.4.0-cuda11.8.0
 VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
 source ${VENV_PREFIX}/bin/activate
 
@@ -29,7 +31,7 @@ source ${VENV_PREFIX}/bin/activate
 # evaluate, then scripts/cluster_figure9.sh to produce Figure 9.
 # =============================================================================
 set -euo pipefail
-module load cuda/11.8 2>/dev/null || true
+module load cuda/11.8.0 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # 1.  Dataset selection
@@ -85,7 +87,7 @@ WORK_DIR=/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning
 #   export HF_HOME=/work/UTSUROLB/utlb_ngy/work/.hf_cache
 #   huggingface-cli download ${BASE_MODEL}
 #   python -c "from datasets import load_dataset; load_dataset('${TRAIN_FILE_PATH}')"
-export HF_HOME="${HF_HOME:-/work/UTSUROLB/utlb_ngy/work/hub}"
+export HF_HOME="${HF_HOME:-/work/UTSUROLB/utlb_ngy/work}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 
@@ -103,93 +105,65 @@ echo "======================================================"
 echo ""
 
 # ---------------------------------------------------------------------------
-# 4.  Launch torchrun on worker nodes via SSH (background)
+# 4.  Generate the per-node launch wrapper
 # ---------------------------------------------------------------------------
-for i in $(seq 1 $((NNODES - 1))); do
-    ssh -o StrictHostKeyChecking=no "${NODES[$i]}" bash << REMOTE &
+# NQSV runs the job script on the MASTER node only; worker nodes are reached
+# via MPI (mpirun), not SSH. We use mpirun purely to bootstrap ONE torchrun per
+# node, deriving node_rank from OpenMPI's per-rank env var. torch itself talks
+# NCCL over InfiniBand — MPI is only the launcher. The wrapper lives on shared
+# /work so every node can read the same file.
+LAUNCH_WRAPPER="${WORK_DIR}/scripts/_mpi_launch_node.sh"
+cat > "${LAUNCH_WRAPPER}" <<EOF
+#!/bin/bash
 source ${VENV_PREFIX}/bin/activate
-module load cuda/11.8 2>/dev/null || true
-export HF_HOME=${HF_HOME}
-export HF_HUB_OFFLINE=${HF_HUB_OFFLINE}
-export TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE}
-torchrun \
-    --nnodes=${NNODES} \
-    --nproc-per-node=${GPUS_PER_NODE} \
-    --node_rank=${i} \
-    --master_addr=${MASTER_ADDR} \
-    --master_port=12345 \
-    ${WORK_DIR}/src/sft.py \
-    --block_size=${BLOCK_SIZE} \
-    --per_device_train_batch_size=${MICRO_BATCH} \
-    --per_device_eval_batch_size=${MICRO_BATCH} \
-    --gradient_accumulation_steps=${GRAD_ACCUM} \
-    --num_train_epochs=${EPOCHS} \
-    --max_steps=${MAX_STEPS} \
-    --train_file_path=${TRAIN_FILE_PATH} \
-    --model_name=${BASE_MODEL} \
-    --warmup_ratio=${WARMUP_RATIO} \
-    --bf16=True \
-    --eval_strategy=no \
-    --logging_steps=1 \
-    --save_strategy=steps \
-    --save_steps=200 \
-    --save_total_limit=20 \
-    --lr_scheduler_type=cosine \
-    --learning_rate=${LR} \
-    --weight_decay=${WEIGHT_DECAY} \
-    --adam_beta1=${ADAM_B1} \
-    --adam_beta2=${ADAM_B2} \
-    --output_dir=${WORK_DIR}/${CKPT_DIR} \
-    --push_to_hub=False \
-    --save_only_model=True \
-    --gradient_checkpointing=True \
-    --optim=adamw_torch \
-    --fsdp="full_shard auto_wrap" \
-    --fsdp_config=${WORK_DIR}/train/fsdp_config_qwen_cpu.json \
+module load cuda/11.8.0 2>/dev/null || true
+torchrun \\
+    --nnodes=${NNODES} \\
+    --nproc-per-node=${GPUS_PER_NODE} \\
+    --node_rank=\${OMPI_COMM_WORLD_RANK} \\
+    --master_addr=${MASTER_ADDR} \\
+    --master_port=12345 \\
+    ${WORK_DIR}/src/sft.py \\
+    --block_size=${BLOCK_SIZE} \\
+    --per_device_train_batch_size=${MICRO_BATCH} \\
+    --per_device_eval_batch_size=${MICRO_BATCH} \\
+    --gradient_accumulation_steps=${GRAD_ACCUM} \\
+    --num_train_epochs=${EPOCHS} \\
+    --max_steps=${MAX_STEPS} \\
+    --train_file_path=${TRAIN_FILE_PATH} \\
+    --model_name=${BASE_MODEL} \\
+    --warmup_ratio=${WARMUP_RATIO} \\
+    --bf16=True \\
+    --eval_strategy=no \\
+    --logging_steps=1 \\
+    --save_strategy=steps \\
+    --save_steps=200 \\
+    --save_total_limit=20 \\
+    --lr_scheduler_type=cosine \\
+    --learning_rate=${LR} \\
+    --weight_decay=${WEIGHT_DECAY} \\
+    --adam_beta1=${ADAM_B1} \\
+    --adam_beta2=${ADAM_B2} \\
+    --output_dir=${WORK_DIR}/${CKPT_DIR} \\
+    --push_to_hub=False \\
+    --save_only_model=True \\
+    --gradient_checkpointing=True \\
+    --optim=adamw_torch \\
+    --fsdp="full_shard auto_wrap" \\
+    --fsdp_config=${WORK_DIR}/train/fsdp_config_qwen_cpu.json \\
     --report_to=none
-REMOTE
-done
+EOF
+chmod +x "${LAUNCH_WRAPPER}"
 
 # ---------------------------------------------------------------------------
-# 5.  Launch torchrun on master node (rank 0) — foreground
+# 5.  Launch one torchrun per node via mpirun (NQSV-supported mechanism)
 # ---------------------------------------------------------------------------
-torchrun \
-    --nnodes=${NNODES} \
-    --nproc-per-node=${GPUS_PER_NODE} \
-    --node_rank=0 \
-    --master_addr=${MASTER_ADDR} \
-    --master_port=12345 \
-    ${WORK_DIR}/src/sft.py \
-    --block_size=${BLOCK_SIZE} \
-    --per_device_train_batch_size=${MICRO_BATCH} \
-    --per_device_eval_batch_size=${MICRO_BATCH} \
-    --gradient_accumulation_steps=${GRAD_ACCUM} \
-    --num_train_epochs=${EPOCHS} \
-    --max_steps=${MAX_STEPS} \
-    --train_file_path=${TRAIN_FILE_PATH} \
-    --model_name=${BASE_MODEL} \
-    --warmup_ratio=${WARMUP_RATIO} \
-    --bf16=True \
-    --eval_strategy=no \
-    --logging_steps=1 \
-    --save_strategy=steps \
-    --save_steps=200 \
-    --save_total_limit=20 \
-    --lr_scheduler_type=cosine \
-    --learning_rate=${LR} \
-    --weight_decay=${WEIGHT_DECAY} \
-    --adam_beta1=${ADAM_B1} \
-    --adam_beta2=${ADAM_B2} \
-    --output_dir=${WORK_DIR}/${CKPT_DIR} \
-    --push_to_hub=False \
-    --save_only_model=True \
-    --gradient_checkpointing=True \
-    --optim=adamw_torch \
-    --fsdp="full_shard auto_wrap" \
-    --fsdp_config=${WORK_DIR}/train/fsdp_config_qwen_cpu.json \
-    --report_to=none
-
-wait
+# NQSV_MPIOPTS / NQSV_MPI_VER are provided by NQSV because of the "#PBS -T
+# openmpi" + "#PBS -v NQSV_MPI_VER=..." directives at the top.
+module load openmpi/${NQSV_MPI_VER:-4.1.6/gcc11.4.0-cuda11.8.0} 2>/dev/null || true
+mpirun ${NQSV_MPIOPTS:-} -np ${NNODES} -npernode 1 \
+    -x HF_HOME -x HF_HUB_OFFLINE -x TRANSFORMERS_OFFLINE \
+    bash "${LAUNCH_WRAPPER}"
 
 echo ""
 echo "======================================================"
