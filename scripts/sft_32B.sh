@@ -2,6 +2,7 @@
 #PBS -A UTSUROLB
 #PBS -b 16
 #PBS -q gpu
+#PBS -l elapstim_req=07:00:00
 #PBS -T openmpi
 #PBS -v NQSV_MPI_VER=5.0.10/gcc11.4.0-cuda12.6.3
 VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
