@@ -160,7 +160,7 @@ chmod +x "${LAUNCH_WRAPPER}"
 # ---------------------------------------------------------------------------
 # NQSV_MPIOPTS / NQSV_MPI_VER are provided by NQSV because of the "#PBS -T
 # openmpi" + "#PBS -v NQSV_MPI_VER=..." directives at the top.
-module load openmpi/${NQSV_MPI_VER:-4.1.6/gcc11.4.0-cuda11.8.0} 2>/dev/null || true
+module load openmpi/$NQSV_MPI_VER
 mpirun ${NQSV_MPIOPTS:-} -np ${NNODES} -npernode 1 \
     -x HF_HOME -x HF_HUB_OFFLINE -x TRANSFORMERS_OFFLINE \
     bash "${LAUNCH_WRAPPER}"
