@@ -31,7 +31,8 @@ source ${VENV_PREFIX}/bin/activate
 # evaluate, then scripts/cluster_figure9.sh to produce Figure 9.
 # =============================================================================
 set -euo pipefail
-module load cuda/11.8.0 2>/dev/null || true
+# No cuda module is loaded on purpose: PyTorch ships its own CUDA runtime, and
+# loading a cuda module here conflicts with the cuda/12.x that OpenMPI pulls in.
 
 # ---------------------------------------------------------------------------
 # 1.  Dataset selection
@@ -116,7 +117,6 @@ LAUNCH_WRAPPER="${WORK_DIR}/scripts/_mpi_launch_node.sh"
 cat > "${LAUNCH_WRAPPER}" <<EOF
 #!/bin/bash
 source ${VENV_PREFIX}/bin/activate
-module load cuda/11.8.0 2>/dev/null || true
 torchrun \\
     --nnodes=${NNODES} \\
     --nproc-per-node=${GPUS_PER_NODE} \\
@@ -160,6 +160,7 @@ chmod +x "${LAUNCH_WRAPPER}"
 # ---------------------------------------------------------------------------
 # NQSV_MPIOPTS / NQSV_MPI_VER are provided by NQSV because of the "#PBS -T
 # openmpi" + "#PBS -v NQSV_MPI_VER=..." directives at the top.
+module unload cuda 2>/dev/null || true   # avoid conflict with openmpi's cuda/12.x dep
 module load openmpi/$NQSV_MPI_VER
 mpirun ${NQSV_MPIOPTS:-} -np ${NNODES} -npernode 1 \
     -x HF_HOME -x HF_HUB_OFFLINE -x TRANSFORMERS_OFFLINE \
