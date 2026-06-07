@@ -18,6 +18,14 @@ class TrainingConfig:
 
 def train():
     os.environ["WANDB_DISABLED"] = "true"
+    # On a shared filesystem (Lustre) every distributed rank computes the same
+    # dataset .map fingerprint and writes to the SAME cache-*.arrow path,
+    # racing on rename/chmod → FileNotFoundError. Disabling on-disk caching
+    # makes every .map (ours below AND SFTTrainer's internal tokenization map)
+    # run in memory, eliminating the cross-rank collision. The s1K dataset is
+    # tiny, so recomputing per rank is negligible.
+    import datasets as _hf_datasets
+    _hf_datasets.disable_caching()
     # parsing input
     parser = transformers.HfArgumentParser((TrainingConfig, trl.SFTConfig))
     config, args = parser.parse_args_into_dataclasses()
@@ -90,7 +98,8 @@ def train():
                 messages, tokenize=False, add_generation_prompt=False
             )}
 
-        dataset = dataset.map(_format, desc="Formatting dataset")
+        dataset = dataset.map(_format, desc="Formatting dataset",
+                              keep_in_memory=True, load_from_cache_file=False)
 
     # Only compute loss over assistant responses
     # Verified that it precisely starts where the thinking tokens start and ends with the first pad token
