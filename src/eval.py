@@ -241,7 +241,7 @@ def main():
                 max_tokens=max_length,
                 temperature=0.6,
                 top_p=0.95,
-                repetition_penalty=1.0,   # 1.4 was far too high → degenerate / language-switch output
+                repetition_penalty=1.2,   # 1.4 was far too high → degenerate / language-switch output
                 stop_token_ids=stop_ids,
             )
             with torch.no_grad():

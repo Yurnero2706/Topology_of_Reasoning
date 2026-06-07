@@ -1,8 +1,7 @@
 #!/bin/bash
 #PBS -A UTSUROLB
-#PBS -b 2
+#PBS -b 16
 #PBS -q gpu
-#PBS -l elapstim_req=01:00:00
 VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
 source ${VENV_PREFIX}/bin/activate
 
@@ -55,7 +54,7 @@ esac
 # ---------------------------------------------------------------------------
 # 2.  Hyperparameters
 # ---------------------------------------------------------------------------
-BASE_MODEL="Qwen/Qwen2.5-14B"
+BASE_MODEL="${BASE_MODEL:-Qwen/Qwen2.5-32B-Instruct}"
 
 LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
@@ -78,6 +77,18 @@ NNODES="${#NODES[@]}"
 GPUS_PER_NODE=$(nvidia-smi -L | wc -l)
 WORK_DIR=/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning
 
+# ---------------------------------------------------------------------------
+# 3b.  Offline HuggingFace cache  (compute nodes have no internet)
+# ---------------------------------------------------------------------------
+# Pre-download ONCE on a login node into this shared cache, then every node
+# reads it offline (no hub access, no 16-way duplicate downloads):
+#   export HF_HOME=/work/UTSUROLB/utlb_ngy/work/.hf_cache
+#   huggingface-cli download ${BASE_MODEL}
+#   python -c "from datasets import load_dataset; load_dataset('${TRAIN_FILE_PATH}')"
+export HF_HOME="${HF_HOME:-/work/UTSUROLB/utlb_ngy/work/hub}"
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
+
 echo ""
 echo "======================================================"
 echo "  SFT: ${BASE_MODEL}"
@@ -98,6 +109,9 @@ for i in $(seq 1 $((NNODES - 1))); do
     ssh -o StrictHostKeyChecking=no "${NODES[$i]}" bash << REMOTE &
 source ${VENV_PREFIX}/bin/activate
 module load cuda/11.8 2>/dev/null || true
+export HF_HOME=${HF_HOME}
+export HF_HUB_OFFLINE=${HF_HUB_OFFLINE}
+export TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE}
 torchrun \
     --nnodes=${NNODES} \
     --nproc-per-node=${GPUS_PER_NODE} \
@@ -125,11 +139,11 @@ torchrun \
     --weight_decay=${WEIGHT_DECAY} \
     --adam_beta1=${ADAM_B1} \
     --adam_beta2=${ADAM_B2} \
-    --output_dir=${CKPT_DIR} \
+    --output_dir=${WORK_DIR}/${CKPT_DIR} \
     --push_to_hub=False \
     --save_only_model=True \
     --gradient_checkpointing=True \
-    --optim=adamw_bnb_8bit \
+    --optim=adamw_torch \
     --fsdp="full_shard auto_wrap" \
     --fsdp_config=${WORK_DIR}/train/fsdp_config_qwen_cpu.json \
     --report_to=none
@@ -166,11 +180,11 @@ torchrun \
     --weight_decay=${WEIGHT_DECAY} \
     --adam_beta1=${ADAM_B1} \
     --adam_beta2=${ADAM_B2} \
-    --output_dir=${CKPT_DIR} \
+    --output_dir=${WORK_DIR}/${CKPT_DIR} \
     --push_to_hub=False \
     --save_only_model=True \
     --gradient_checkpointing=True \
-    --optim=adamw_bnb_8bit \
+    --optim=adamw_torch \
     --fsdp="full_shard auto_wrap" \
     --fsdp_config=${WORK_DIR}/train/fsdp_config_qwen_cpu.json \
     --report_to=none
@@ -181,4 +195,7 @@ echo ""
 echo "======================================================"
 echo "  Training complete."
 echo "  Checkpoints: ${CKPT_DIR}/checkpoint-200"
+echo ""
+echo "  Next steps:"
+echo "    MODEL=${CKPT_DIR}/checkpoint-200 bash scripts/eval_14B.sh"
 echo "======================================================"
