@@ -3,7 +3,7 @@
 #PBS -b 16
 #PBS -q gpu
 #PBS -T openmpi
-#PBS -v NQSV_MPI_VER=4.1.6/gcc11.4.0-cuda11.8.0
+#PBS -v NQSV_MPI_VER=5.0.10/gcc11.4.0-cuda12.6.3
 VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
 source ${VENV_PREFIX}/bin/activate
 
