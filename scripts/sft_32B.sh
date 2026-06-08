@@ -163,9 +163,19 @@ chmod +x "${LAUNCH_WRAPPER}"
 # openmpi" + "#PBS -v NQSV_MPI_VER=..." directives at the top.
 module unload cuda 2>/dev/null || true   # avoid conflict with openmpi's cuda/12.x dep
 module load openmpi/$NQSV_MPI_VER
+
+# Mirror all rank output to a logfile on shared /work so it can be watched LIVE
+# from a login node (NQSV only copies its own stdout back when the job ENDS).
+# All ranks' stdout is forwarded to the master's mpirun stdout, so this captures
+# everything — including the rank-0 Trainer loss lines.
+mkdir -p "${WORK_DIR}/logs"
+LIVE_LOG="${WORK_DIR}/logs/sft_${DATASET}_$(date +%Y%m%d_%H%M%S).log"
+echo "Live log: ${LIVE_LOG}"
+echo "Watch it with:  tail -f ${LIVE_LOG}"
+
 mpirun ${NQSV_MPIOPTS:-} -np ${NNODES} -npernode 1 \
     -x HF_HOME -x HF_HUB_OFFLINE -x TRANSFORMERS_OFFLINE \
-    bash "${LAUNCH_WRAPPER}"
+    bash "${LAUNCH_WRAPPER}" 2>&1 | tee "${LIVE_LOG}"
 
 echo ""
 echo "======================================================"
