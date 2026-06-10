@@ -118,6 +118,12 @@ LAUNCH_WRAPPER="${WORK_DIR}/scripts/_mpi_launch_node.sh"
 cat > "${LAUNCH_WRAPPER}" <<EOF
 #!/bin/bash
 source ${VENV_PREFIX}/bin/activate
+# Force SHARDED checkpoint saving. transformers' --fsdp_config JSON does NOT
+# read a "state_dict_type" key — accelerate controls it via this env var.
+# Default is FULL_STATE_DICT, which all-gathers the entire 32B model onto
+# rank 0's CPU (~64 GB) at every save → OOM/SIGKILL on a 115 GiB node. SHARDED
+# makes each rank write only its own slice (no gather), so the save fits.
+export FSDP_STATE_DICT_TYPE=SHARDED_STATE_DICT
 torchrun \\
     --nnodes=${NNODES} \\
     --nproc-per-node=${GPUS_PER_NODE} \\
