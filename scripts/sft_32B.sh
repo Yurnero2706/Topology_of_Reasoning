@@ -153,7 +153,7 @@ torchrun \\
     --adam_beta2=${ADAM_B2} \\
     --output_dir=${WORK_DIR}/${CKPT_DIR} \\
     --push_to_hub=False \\
-    --save_only_model=True \\
+    --save_only_model=False \\
     --gradient_checkpointing=True \\
     --optim=adamw_torch \\
     --fsdp="full_shard auto_wrap" \\
@@ -191,3 +191,6 @@ echo ""
 echo "  Next steps:"
 echo "    MODEL=${CKPT_DIR}/checkpoint-200 bash scripts/eval_14B.sh"
 echo "======================================================"
+
+# View log
+# tail -f $(ls -t /work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning/logs/*.log | head -1)
