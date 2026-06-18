@@ -6,7 +6,9 @@ import transformers
 import torch
 import numpy as np
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
-import sentence_transformers
+# NOTE: `sentence_transformers` is imported lazily inside similarity_selection()
+# (the only place it is used) so that importing KshotDataset — which eval.py does
+# unconditionally — does not require the package unless demo_selection='similar'.
 
 class KshotDataset(Dataset):
     """Dataset for in-context learning."""
@@ -51,6 +53,7 @@ class KshotDataset(Dataset):
         return [self.demo_data[i] for i in rand_ids]
     
     def similarity_selection(self, index):
+        import sentence_transformers  # lazy: only needed for demo_selection='similar'
         self.embedding_model = sentence_transformers.SentenceTransformer('all-mpnet-base-v2')
         self.embedding_model.eval()
         if self.demo_embeddings is None:

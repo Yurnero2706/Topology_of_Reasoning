@@ -7,7 +7,7 @@ transformers==4.46.1
 wandb==0.17.3
 datasets==3.1.0
 accelerate==1.0.1
-# vllm==0.5.3
+vllm==0.6.6.post1 
 ipykernel==6.28.0
 ipython==8.18.1
 gradio==4.44.0
@@ -17,4 +17,5 @@ peft==0.17.1
 matplotlib==3.9.4
 numpy<2
 deepspeed==0.12.6
-
+scikit-learn==1.6.1
+scipy==1.13.1

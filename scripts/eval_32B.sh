@@ -34,7 +34,10 @@
 set -euo pipefail
 
 WORK_DIR=/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning
-VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
+# Eval runs in its OWN venv (vLLM pins torch>=2.4, incompatible with the
+# training env's torch==2.1.1). Build it once on a login node from
+# H100_eval_requirements.txt. Override with VENV_PREFIX=... if located elsewhere.
+VENV_PREFIX="${VENV_PREFIX:-/work/UTSUROLB/utlb_ngy/work/.venv-eval}"
 source ${VENV_PREFIX}/bin/activate
 cd "${WORK_DIR}"
 
