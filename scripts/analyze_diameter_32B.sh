@@ -18,8 +18,7 @@
 # Usage
 # -----
 #   # Analyse the step-200 checkpoints (base vs s1-v1.0 vs s1-v1.1):
-#   qsub -v CKPT_S1_V10=ckpts/s1-v1.0/checkpoint-200,CKPT_S1_V11=ckpts/s1-v1.1/checkpoint-200,OUTPUT_DIR=results_diameter/simplescaling/s1K/steps-200/ \
-#        scripts/analyze_diameter_32B.sh
+#   qsub -v CKPT_S1_V10=ckpts/s1-v1.0/checkpoint-200,CKPT_S1_V11=ckpts/s1-v1.1/checkpoint-200,OUTPUT_DIR=results_diameter/simplescaling/s1K/steps-200/ scripts/analyze_diameter_32B.sh
 #
 #   # Smoke-test (5 samples, ratio 0.9 only):
 #   qsub -v SMOKE_TEST=1 scripts/analyze_diameter_32B.sh
@@ -72,7 +71,12 @@ CKPT_S1_V11="${CKPT_S1_V11:-ckpts/s1-v1.1/checkpoint-200}"
 # ---------------------------------------------------------------------------
 TARGET_LAYER_RATIOS="${TARGET_LAYER_RATIOS:-0.1 0.3 0.5 0.7 0.9}"
 OUTPUT_DIR="${OUTPUT_DIR:-results_diameter/${DATASET_S1K}/steps-${NUM_TYPES}/}"
-CACHE_DIR="${HF_HOME:-${HOME}/.cache/huggingface}"
+# NOTE: we deliberately do NOT pass --cache_dir to analyze_diameter.py. HF_HOME
+# already resolves the offline cache via its standard sub-dirs ($HF_HOME/hub for
+# models, $HF_HOME/datasets for datasets) — exactly how they were pre-downloaded
+# and how sft_32B.sh loads them. Passing cache_dir=$HF_HOME explicitly OVERRIDES
+# those sub-dirs, so HF looks in the wrong folder and falls back to the Hub →
+# "ConnectionError ... OfflineModeIsEnabled".
 
 # ---------------------------------------------------------------------------
 # 3.  Smoke-test mode
@@ -140,7 +144,6 @@ python src/analyze_diameter.py \
     --batch_size   "${BATCH_SIZE}" \
     --torch_dtype  "${TORCH_DTYPE}" \
     --output_dir   "${OUTPUT_DIR}" \
-    --cache_dir    "${CACHE_DIR}" \
     ${MAX_SAMPLES}
 
 echo ""
