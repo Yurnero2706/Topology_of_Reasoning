@@ -1,4 +1,5 @@
 {
     "transformer_layer_cls_to_wrap": "Qwen2DecoderLayer",
-    "cpu_ram_efficient_loading": true
+    "cpu_ram_efficient_loading": true,
+    "sync_module_states": true
 }
