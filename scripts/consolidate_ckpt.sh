@@ -24,15 +24,22 @@ set -euo pipefail
 CKPT="${1:?usage: consolidate_ckpt.sh <checkpoint_dir> [base_model]}"
 BASE_MODEL="${2:-Qwen/Qwen2.5-32B-Instruct}"
 
+# Resolve the repo root from this script's own location so src/ is found
+# regardless of the current working directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(dirname "${SCRIPT_DIR}")"
+
+# Uses the TRAINING venv (torch 2.1.1). We do NOT use accelerate.merge_fsdp_weights
+# (it requires torch>=2.3) — src/consolidate_fsdp.py does the merge with the
+# torch-2.1 DCP API, fully offline.
 VENV_PREFIX="${VENV_PREFIX:-/work/UTSUROLB/utlb_ngy/work/.venv}"
 source ${VENV_PREFIX}/bin/activate
 export HF_HOME="${HF_HOME:-/work/UTSUROLB/utlb_ngy/work}"
 
-# 1. Merge the sharded distcp weights → ${CKPT}/model.safetensors
+# 1. Merge the sharded distcp weights → ${CKPT}/pytorch_model.bin
 if [[ -d "${CKPT}/pytorch_model_fsdp_0" ]]; then
     echo "[1/2] Merging sharded weights in ${CKPT}/pytorch_model_fsdp_0 ..."
-    python -c "from accelerate.utils import merge_fsdp_weights; \
-merge_fsdp_weights('${CKPT}/pytorch_model_fsdp_0', '${CKPT}', safe_serialization=True)"
+    python "${REPO_DIR}/src/consolidate_fsdp.py" "${CKPT}"
 else
     echo "[1/2] No pytorch_model_fsdp_0/ in ${CKPT} — assuming already merged."
 fi
