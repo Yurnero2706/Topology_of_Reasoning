@@ -6,11 +6,15 @@ Why this exists
 ---------------
 sft_32B.sh saves checkpoints with FSDP SHARDED_STATE_DICT, so each checkpoint
 holds `pytorch_model_fsdp_0/*.distcp` shards instead of a single weights file.
-`accelerate.merge_fsdp_weights` would merge them, but it hard-requires
-torch>=2.3 (it calls torch.distributed.checkpoint.format_utils, added in 2.3).
-The training venv has torch 2.1.1, so we replicate the same logic with the
-lower-level DCP API that DOES exist in 2.1: load the sharded checkpoint into a
-plain state_dict with no_dist=True + _EmptyStateDictLoadPlanner, then torch.save.
+`accelerate.merge_fsdp_weights` would merge them but hard-requires torch>=2.3,
+and torch 2.1's `_EmptyStateDictLoadPlanner` (which the >=2.3 path relies on)
+does not exist. So we do it with the building blocks that DO exist in 2.1:
+
+  1. Read the checkpoint's metadata to learn every tensor's key/shape/dtype.
+  2. Allocate a matching empty CPU state_dict (keys therefore match exactly).
+  3. dist_cp.load_state_dict(no_dist=True) fills those tensors in place,
+     gathering the shards into full tensors on one process.
+  4. torch.save the result.
 
 Reading the shards with the same torch that wrote them (2.1.1) also avoids any
 cross-version DCP format mismatch. Runs on CPU, fully offline.
@@ -28,7 +32,7 @@ import sys
 import torch
 import torch.distributed.checkpoint as dist_cp
 from torch.distributed.checkpoint import FileSystemReader
-from torch.distributed.checkpoint.default_planner import _EmptyStateDictLoadPlanner
+from torch.distributed.checkpoint.metadata import TensorStorageMetadata
 
 
 def main() -> None:
@@ -44,35 +48,42 @@ def main() -> None:
     if not os.path.isdir(shard_dir):
         sys.exit(f"ERROR: no sharded dir found at '{shard_dir}'")
 
-    print(f"Loading DCP shards (no_dist, CPU) from: {shard_dir}")
+    reader = FileSystemReader(shard_dir)
+    metadata = reader.read_metadata()
+
+    # Build an empty CPU state_dict straight from the checkpoint's metadata, so
+    # keys/shapes/dtypes match the stored tensors exactly. These are FULL-size
+    # tensors (metadata.size is the unsharded shape); DCP gathers shards into them.
     state_dict = {}
+    skipped = []
+    for key, smd in metadata.state_dict_metadata.items():
+        if isinstance(smd, TensorStorageMetadata):
+            state_dict[key] = torch.empty(tuple(smd.size), dtype=smd.properties.dtype)
+        else:
+            skipped.append(key)  # non-tensor (BytesStorageMetadata) — not part of weights
+    if skipped:
+        print(f"Note: skipping {len(skipped)} non-tensor entries (e.g. {skipped[:3]})")
+
+    print(f"Loading {len(state_dict)} tensors from {shard_dir} (no_dist, CPU) ...")
     dist_cp.load_state_dict(
         state_dict=state_dict,
-        storage_reader=FileSystemReader(shard_dir),
-        planner=_EmptyStateDictLoadPlanner(),
+        storage_reader=reader,
         no_dist=True,
     )
 
-    # accelerate's save_fsdp_model stores {"model": <real weights>}. Depending on
-    # how DCP reconstructs it on this torch version, that wrapper shows up either
-    # as a nested dict under "model", or flattened as a "model." prefix on every
-    # key. Handle both so the result matches the HF param FQNs (model.*, lm_head.*).
-    if "model" in state_dict and isinstance(state_dict["model"], dict):
-        weights = state_dict["model"]
-    elif state_dict and all(k.startswith("model.") for k in state_dict):
-        # flattened wrapper: strip exactly ONE leading "model." (real Qwen keys
-        # include "lm_head.weight", which would NOT survive if this were already
-        # unwrapped — so an all-"model." prefix means the wrapper is present).
-        weights = {k[len("model."):]: v for k, v in state_dict.items()}
-    else:
-        weights = state_dict
+    # accelerate's save_fsdp_model stores {"model": <weights>}; in the flattened
+    # metadata that wrapper shows up as a leading "model." on EVERY key. Real Qwen
+    # keys include "lm_head.weight" (no "model." prefix), so if every key starts
+    # with "model." the wrapper is present and we strip exactly one level.
+    if state_dict and all(k.startswith("model.") for k in state_dict):
+        state_dict = {k[len("model."):]: v for k, v in state_dict.items()}
 
-    sample = list(weights.keys())[:3]
-    print(f"Recovered {len(weights)} tensors. Sample keys: {sample}")
+    sample = list(state_dict.keys())[:3]
+    print(f"Recovered {len(state_dict)} tensors. Sample keys: {sample}")
 
     out_path = os.path.join(args.checkpoint_dir, args.out_name)
     print(f"Saving consolidated weights -> {out_path}")
-    torch.save(weights, out_path)
+    torch.save(state_dict, out_path)
     print("Done.")
 
 
