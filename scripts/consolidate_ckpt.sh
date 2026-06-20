@@ -14,8 +14,9 @@
 #   "ValueError: Unrecognized model ... Should have a model_type key in config.json"
 #
 # This job fixes ONE checkpoint by:
-#   1. merging the .distcp shards into a single pytorch_model.bin
-#      (src/consolidate_fsdp.py — torch 2.1 compatible, CPU, offline)
+#   1. merging the .distcp shards into sharded model-*.safetensors + index
+#      (src/consolidate_fsdp.py — torch 2.1 compatible, CPU, offline, low-RAM:
+#       streams ~5 GB at a time so it does NOT need 64 GB to merge a 32B model)
 #   2. copying config.json + tokenizer from the base model (architecture is
 #      unchanged by fine-tuning, so the base config is correct)
 #
@@ -66,7 +67,7 @@ echo "  Base model   : ${BASE_MODEL}"
 echo "  Live log     : ${LIVE_LOG}"
 echo "============================================================"
 
-# 1. Merge the sharded distcp weights → ${CKPT}/pytorch_model.bin
+# 1. Merge the sharded distcp weights → ${CKPT}/model-*.safetensors + index.json
 if [[ -d "${CKPT}/pytorch_model_fsdp_0" ]]; then
     echo "[1/2] Merging sharded weights in ${CKPT}/pytorch_model_fsdp_0 ..."
     python "${REPO_DIR}/src/consolidate_fsdp.py" "${CKPT}"
