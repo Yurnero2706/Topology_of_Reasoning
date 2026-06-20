@@ -1,4 +1,7 @@
 #!/bin/bash
+#PBS -b 1
+#PBS -q gpu
+#PBS -l elapstim_req=06:00:00
 # =============================================================================
 # consolidate_ckpt.sh — turn a SHARDED FSDP checkpoint into a loadable HF model
 # =============================================================================
