@@ -41,10 +41,11 @@ if [[ -z "${CKPT}" ]]; then
 fi
 BASE_MODEL="${BASE_MODEL:-${2:-Qwen/Qwen2.5-32B-Instruct}}"
 
-# Resolve the repo root from this script's own location, then cd into it so a
+# Repo root on shared /work. HARDCODED (not derived from BASH_SOURCE) because
+# NQSV runs a SPOOLED COPY of this script from /var/opt/nec/nqsv/jsv/jobfile/,
+# so BASH_SOURCE would point there (read-only) instead of /work. cd in so a
 # RELATIVE CKPT path (e.g. ckpts/...) resolves regardless of the job's cwd.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "${SCRIPT_DIR}")"
+REPO_DIR="${REPO_DIR:-/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning}"
 cd "${REPO_DIR}"
 
 # Training venv (torch 2.1.1). src/consolidate_fsdp.py does the merge with the
