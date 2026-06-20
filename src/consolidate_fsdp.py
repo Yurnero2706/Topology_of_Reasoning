@@ -99,7 +99,11 @@ def main() -> None:
         dist_cp.load_state_dict(state_dict=sd, storage_reader=reader, no_dist=True)
 
         out_sd = {clean(k): v.contiguous() for k, v in sd.items()}
-        save_file(out_sd, os.path.join(args.checkpoint_dir, shard_name))
+        # metadata={"format": "pt"} is REQUIRED: transformers' safetensors loader
+        # does metadata.get("format"), which crashes with AttributeError if the
+        # file has no metadata header (NoneType).
+        save_file(out_sd, os.path.join(args.checkpoint_dir, shard_name),
+                  metadata={"format": "pt"})
         for ck, v in out_sd.items():
             weight_map[ck] = shard_name
             total_size += v.numel() * v.element_size()
