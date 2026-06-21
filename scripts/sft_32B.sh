@@ -63,6 +63,7 @@ BASE_MODEL="${BASE_MODEL:-Qwen/Qwen2.5-32B-Instruct}"
 LR=1e-5
 MIN_LR=0              # documented here for parity; not passed to sft.py
 EPOCHS=5
+SAVE_STEPS=${SAVE_STEPS:-200}
 WEIGHT_DECAY=1e-4
 MICRO_BATCH=1
 GRAD_ACCUM=1
@@ -144,7 +145,7 @@ torchrun \\
     --eval_strategy=no \\
     --logging_steps=1 \\
     --save_strategy=steps \\
-    --save_steps=200 \\
+    --save_steps=${SAVE_STEPS} \\
     --save_total_limit=20 \\
     --lr_scheduler_type=cosine \\
     --learning_rate=${LR} \\
