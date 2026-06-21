@@ -1,0 +1,30 @@
+# --- Model weights / checkpoints (HUGE — never commit; GitHub rejects >100 MB) ---
+ckpts/
+*.safetensors
+*.bin
+*.distcp
+*.pt
+*.pth
+pytorch_model_fsdp_0/
+optimizer_0/
+
+# --- Logs & generated files ---
+logs/
+*.log
+scripts/_mpi_launch_node.sh
+
+# --- Virtual environments (in case any live inside the repo) ---
+.venv/
+.venv-eval/
+
+# --- HuggingFace cache (if ever placed inside the repo) ---
+hub/
+datasets/
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+
+# NOTE: results_diameter/ (plots + JSON) and eval_result/ (CSVs) are NOT ignored
+# — those are the small artifacts you DO want to commit.
