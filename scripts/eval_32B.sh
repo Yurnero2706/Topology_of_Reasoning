@@ -9,10 +9,9 @@
 #
 # IMPORTANT — the checkpoint must be CONSOLIDATED first.
 #   sft_32B.sh saves SHARDED FSDP checkpoints (a pytorch_model_fsdp_0/ dir of
-#   .distcp files). vLLM cannot read those. Merge each checkpoint once before
-#   evaluating:
-#       accelerate merge-weights ckpts/s1-v1.0/checkpoint-200/pytorch_model_fsdp_0 \
-#                                ckpts/s1-v1.0/checkpoint-200
+#   .distcp files). vLLM cannot read those. Merge each checkpoint once with:
+#       qsub -v CKPT=ckpts/s1-v1.0/checkpoint-200 scripts/consolidate_ckpt.sh
+#   (produces model-*.safetensors + index.json + config.json + tokenizer).
 #
 # Usage
 # -----
@@ -34,10 +33,8 @@
 set -euo pipefail
 
 WORK_DIR=/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning
-# Eval runs in its OWN venv (vLLM pins torch>=2.4, incompatible with the
-# training env's torch==2.1.1). Build it once on a login node from
-# H100_eval_requirements.txt. Override with VENV_PREFIX=... if located elsewhere.
-VENV_PREFIX="${VENV_PREFIX:-/work/UTSUROLB/utlb_ngy/work/.venv-eval}"
+# vLLM is installed in the main .venv. Override with VENV_PREFIX=... if needed.
+VENV_PREFIX="${VENV_PREFIX:-/work/UTSUROLB/utlb_ngy/work/.venv}"
 source ${VENV_PREFIX}/bin/activate
 cd "${WORK_DIR}"
 
