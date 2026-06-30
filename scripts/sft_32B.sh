@@ -4,7 +4,7 @@
 #PBS -q gpu
 #PBS -l elapstim_req=07:00:00
 #PBS -T openmpi
-#PBS -v NQSV_MPI_VER=5.0.10/gcc11.4.0-cuda12.6.3
+#PBS -v NQSV_MPI_VER=5.0.10/gcc11.4.0-cuda12.6.3,MAX_STEPS=400
 VENV_PREFIX=/work/UTSUROLB/utlb_ngy/work/.venv
 source ${VENV_PREFIX}/bin/activate
 
@@ -42,12 +42,12 @@ DATASET="${DATASET:-s1K}"          # "s1K"  →  v1.0 / "s1K-1.1"  →  v1.1
 
 case "${DATASET}" in
     s1K)
-        TRAIN_FILE_PATH="simplescaling/s1K"
-        CKPT_DIR="${CKPT_DIR:-ckpts/s1-v1.0}"
+        TRAIN_FILE_PATH="simplescaling/s1K_tokenized"
+        CKPT_DIR="${CKPT_DIR:-ckpts/s1-v1.0_tokenized}"
         ;;
     s1K-1.1)
-        TRAIN_FILE_PATH="simplescaling/s1K-1.1"
-        CKPT_DIR="${CKPT_DIR:-ckpts/s1-v1.1}"
+        TRAIN_FILE_PATH="simplescaling/s1K-1.1_tokenized"
+        CKPT_DIR="${CKPT_DIR:-ckpts/s1-v1.1_tokenized}"
         ;;
     *)
         echo "ERROR: DATASET must be 's1K' or 's1K-1.1', got: ${DATASET}"
