@@ -119,12 +119,13 @@ LAUNCH_WRAPPER="${WORK_DIR}/scripts/_mpi_launch_node.sh"
 cat > "${LAUNCH_WRAPPER}" <<EOF
 #!/bin/bash
 source ${VENV_PREFIX}/bin/activate
-# Force SHARDED checkpoint saving. transformers' --fsdp_config JSON does NOT read
-# a "state_dict_type" key — accelerate controls it via this env var. The default
-# FULL_STATE_DICT all-gathers the entire 32B (~64 GB) onto rank-0 CPU at every
-# save → OOM/SIGKILL on a 115 GiB node. SHARDED makes each rank write its own
-# slice. (Checkpoints are then consolidated with scripts/consolidate_ckpt.sh.)
+
 export FSDP_STATE_DICT_TYPE=SHARDED_STATE_DICT
+
+export FSDP_OFFLOAD_PARAMS=true
+# Reclaim the "reserved but unallocated" memory the OOM flagged (~9.7 GB) by
+# letting the allocator grow segments instead of fragmenting (torch >= 2.1).
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 torchrun \\
     --nnodes=${NNODES} \\
     --nproc-per-node=${GPUS_PER_NODE} \\
