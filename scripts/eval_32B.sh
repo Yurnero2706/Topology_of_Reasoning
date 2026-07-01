@@ -33,8 +33,9 @@
 set -euo pipefail
 
 WORK_DIR=/work/UTSUROLB/utlb_ngy/work/Topology_of_Reasoning
-# vLLM is installed in the main .venv. Override with VENV_PREFIX=... if needed.
-VENV_PREFIX="${VENV_PREFIX:-/work/UTSUROLB/utlb_ngy/work/.venv}"
+# Eval uses the SEPARATE vLLM venv (torch 2.5.1). It must NOT share the training
+# .venv (torch 2.1.1) — vLLM needs torch>=2.4 and would break torchrun/FSDP there.
+VENV_PREFIX="${VENV_PREFIX:-/work/UTSUROLB/utlb_ngy/work/.venv-eval}"
 source ${VENV_PREFIX}/bin/activate
 cd "${WORK_DIR}"
 

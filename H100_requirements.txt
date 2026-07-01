@@ -7,7 +7,7 @@ transformers==4.46.1
 wandb==0.17.3
 datasets==3.1.0
 accelerate==1.0.1
-vllm==0.6.6.post1 
+# vllm==0.8.4
 ipykernel==6.28.0
 ipython==8.18.1
 gradio==4.44.0
